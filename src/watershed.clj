@@ -29,26 +29,48 @@
 
 ;(def b (periodical [a] {:period 1000 :fn inc}))
 
+(defprotocol IWater
+  (ebb [_])
+  (dam [_]))
 
 (defn- dependents
   [system title]
 
-  (list (reduce-kv
+  (reduce-kv
 
-         (fn [x y z]
+   (fn [x y z]
 
-           (let [tributaries (:tributaries z)]
+     (let [tributaries (keys (:tributaries z))]
 
-             (if (some (fn [w] (= title w)) tributaries)
+       (if (some (fn [w] (= title w)) tributaries)
 
-               (conj x y)
-               x)))
+         (conj x y)
+         x)))
 
-         #{} system)))
+   #{} system))
+
+(defn- contains-many?
+  [coll query-coll]
+
+  (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
+
+(defrecord River [title tributaries stream flow dam]
+
+  IWater
+
+  (ebb
+   [_]
+
+   (flow (vals tributaries)))
+
+  (dam
+   [_]
+
+   (dam)))
 
 (defprotocol IWatershed
-  (river [_ title tributaries stream flow dam])
-  (dam [_ title]))
+  (add-river [_ river])
+  (dam-river [_ title]))
 
 ;Title is the name of the rivers
 ;Tributaries: The dependencies of a river (i.e., the things that compose it)
@@ -56,107 +78,124 @@
 ;Flow: How the tributaries flow into the river
 ;Dam: what happens when the river closes
 
+
+;Create system to start everything...
+
+
 (defrecord Watershed [system]
 
   IWatershed
 
-  (river
+  (add-river
 
-   [_ title tributaries stream flow dam]
+   [_ river]
 
-   (let [sources (map @system tributaries)
+   (assoc-in _ [:system (:title river)] river))
 
-         not-avilable (reduce-kv (fn [x y z] (if (nil? z) (conj x y) x)) [] (zipmap tributaries sources))]
-
-     (if (empty? not-avilable)
-
-       (swap! system assoc title {:tributaries tributaries :stream stream :flow flow :dam dam})
-
-       (throw (Exception. (str not-avilable " were not available")))))
-   _)
-
-  (dam
+  (dam-river
    [_ title]
 
-   (let [dammed (atom [])]
+   @(run-pipeline
 
-     (loop [to-dam (dependents @system title)]
+     title
 
-       (when-not (empty? to-dam)
+     (fn
+       [x]
 
-         (swap! dammed conj to-dam)
+       (loop [dammed []
 
-         (recur (flatten (map (fn [x] (dependents @system x)) to-dam)))))
+              to-dam (dependents system x)]
 
-     (swap! dammed conj [title])
+         (if (empty? to-dam)
 
-     ;close streams of dammed rivers and dissoc...
+           (distinct (conj (mapcat identity dammed) title))
 
-     (doseq [k (keys @system)]
-       ((:dam (k @system)))
-       (swap! system dissoc k))
+           (recur (conj dammed to-dam) (mapcat (fn [x] (dependents system x)) to-dam)))))
 
-     (set (flatten @dammed))))
+     (fn [x]
 
-  )
+       (reduce (fn [y z] (dam (z system)) (dissoc y z)) system x)
+       x)))
+
+  IWater
+
+  (ebb
+
+   [_]
+
+   ;(let [sources (map system tributaries)
+
+   ;     not-avilable (reduce-kv (fn [x y z] (if (nil? z) (conj x y) x)) [] (zipmap tributaries sources))]
+
+   ;(if (empty? not-avilable)
+
+   ; (assoc-in _ [:system title] {:tributaries tributaries :stream stream :flow flow :dam dam})
+
+   ;(throw (Exception. (str not-avilable " were not available")))))
+
+   @(run-pipeline
+
+     system
+
+     ;In the future, parallelize starting
+
+     (fn [system]
+
+       (loop [possible (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map keys (map :tributaries (vals system)))))
+
+              start-order possible
+
+              state (reduce dissoc system start-order)]
+
+         (if (empty? state)
+
+           start-order
+
+           (let [new-possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? start-order z)) (conj x y) x)) [] (zipmap (keys state) (map keys (map :tributaries (vals system)))))]
+
+             (recur new-possible
+
+                    (reduce conj start-order new-possible)
+
+                    (reduce dissoc state new-possible))))))
+
+     (fn [x] (println x) x)
+
+     (fn [start-order]
+
+       ;Connect watershed streams to river streams
+
+       (map ebb (map system start-order))
+
+       _)
+
+     )
+
+   )
+
+  (dam [_]))
 
 (defn watershed []
-  (->Watershed (atom {})))
+  (->Watershed {}))
+
+(defn river [title tributaries stream flow dam]
+  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) stream flow dam))
 
 
+;TEST######################
 
-;TEST
+(def test-system (->
 
+                  (watershed)
 
+                  (add-river (river :reef [] nil nil (fn [] (println "reef removed :("))))
+                  (add-river (river :coral [:reef] nil nil (fn [] (println "coral removed :("))))
+                  (add-river (river :pond [:coral] nil nil (fn [] (println "pond removed :("))))
+                  (add-river (river :lake [:coral] nil nil (fn [] (println "lake removed :("))))
+                  (add-river (river :carrot [:lake] nil nil (fn [] (println "carrot removed :("))))
+                  (add-river (river :beans [:lake] nil nil (fn [] (println "beans removed :("))))))
 
-(def a (watershed))
-
-(river a :reef [] nil nil (fn [] ))
-
-(river a :coral [:reef] nil nil (fn [] ))
-(river a :pond [:coral] nil nil (fn [] ))
-(river a :lake [:coral] nil nil (fn [] ))
-(river a :carrot [:lake] nil nil (fn [] ))
-(river a :beans [:lake] nil nil (fn [] ))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+(dam-river test-system :reef)
 
 
 
