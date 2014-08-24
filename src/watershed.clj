@@ -7,7 +7,7 @@
            [java.util.concurrent Executors]
            [java.util.concurrent ScheduledThreadPoolExecutor]))
 
-(defprotocol IWater
+(defprotocol ITide
   (flow [_])
   (ebb [_]))
 
@@ -34,7 +34,7 @@
 
 (defrecord River [title tributaries stream sieve on-dammed]
 
-  IWater
+  ITide
 
   (flow
    [_]
@@ -99,7 +99,7 @@
 
        (reduce (fn [y z] (ebb (z system)) (dissoc y z)) system x))))
 
-  IWater
+  ITide
 
   (flow
 
@@ -198,8 +198,6 @@
                   (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
                   (add-river (river :creek [:lake] test-fn (fn [] (println "creek removed :("))))))
 
-;(dam-river test-system :reef)
-
 (flow test-system)
 
 ;(s/consume #(println "Beans: " %) (:stream (:creek (:system test-system))))
@@ -207,5 +205,7 @@
 ;(s/consume println (:stream (:reef (:system test-system))))
 
 ;(s/consume #(println "coral: " %) (:stream (:coral (:system test-system))))
+
+;(dam-river test-system :reef)
 
 
