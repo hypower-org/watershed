@@ -151,11 +151,7 @@
 
          (flow (riv system)))
 
-       _)
-
-     )
-
-   )
+       _)))
 
   (ebb [_]))
 
@@ -199,19 +195,17 @@
                   (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
                   (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
                   (add-river (river :lake [:coral] test-fn (fn [] (println "lake removed :("))))
-                  (add-river (river :carrot [:lake] test-fn (fn [] (println "carrot removed :("))))
-                  (add-river (river :beans [:lake] test-fn (fn [] (println "beans removed :("))))))
+                  (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
+                  (add-river (river :creek [:lake] test-fn (fn [] (println "creek removed :("))))))
 
-(dam-river test-system :reef)
+;(dam-river test-system :reef)
 
 (flow test-system)
 
-(s/consume #(println "Beans: " %) (:stream (:beans (:system test-system))))
+;(s/consume #(println "Beans: " %) (:stream (:creek (:system test-system))))
 
 ;(s/consume println (:stream (:reef (:system test-system))))
 
 ;(s/consume #(println "coral: " %) (:stream (:coral (:system test-system))))
-
-;Fix the startup...figure out why nothing is printing...
 
 
