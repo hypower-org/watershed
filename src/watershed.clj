@@ -7,31 +7,9 @@
            [java.util.concurrent Executors]
            [java.util.concurrent ScheduledThreadPoolExecutor]))
 
-;(defn periodical
-;  [streams opts]
-;
-;  (let [val (atom (vec (map (fn [x] nil) streams)))]
-;
-;   (loop [s streams]
-;
-;      (let [index (dec (count s))]
-;
-;       (s/consume (fn [x] (swap! val assoc index x)) (last s) )
-;
-;       (if (> index 0)
-;
-;          (recur (butlast s)))))
-;
-;    (s/map (:fn opts) (s/periodically (:period opts) (fn [] @val)))))
-
-
-;(def a (s/stream))
-
-;(def b (periodical [a] {:period 1000 :fn inc}))
-
 (defprotocol IWater
-  (ebb [_])
-  (dam [_]))
+  (flow [_])
+  (ebb [_]))
 
 (defn- dependents
   [system title]
@@ -54,19 +32,24 @@
 
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
 
-(defrecord River [title tributaries stream flow dam]
+(defrecord River [title tributaries stream sieve on-dammed]
 
   IWater
+
+  (flow
+   [_]
+
+   (s/connect (sieve (vals tributaries)) stream))
 
   (ebb
    [_]
 
-   (flow (vals tributaries)))
+   (doseq [s (vals tributaries)]
+     (s/close! s))
 
-  (dam
-   [_]
+   (s/close! stream)
 
-   (dam)))
+   (on-dammed)))
 
 (defprotocol IWatershed
   (add-river [_ river])
@@ -114,12 +97,11 @@
 
      (fn [x]
 
-       (reduce (fn [y z] (dam (z system)) (dissoc y z)) system x)
-       x)))
+       (reduce (fn [y z] (ebb (z system)) (dissoc y z)) system x))))
 
   IWater
 
-  (ebb
+  (flow
 
    [_]
 
@@ -137,7 +119,7 @@
 
      system
 
-     ;In the future, parallelize starting
+     ;In the future, parallelize starting sequence
 
      (fn [system]
 
@@ -159,13 +141,15 @@
 
                     (reduce dissoc state new-possible))))))
 
-     (fn [x] (println x) x)
+     (fn [x] (println "Starting order: " x) x)
 
      (fn [start-order]
 
-       ;Connect watershed streams to river streams
+       (doseq [riv start-order]
 
-       (map ebb (map system start-order))
+         (mapv s/connect (map :stream (map system (keys (:tributaries (riv system))))) (vals (:tributaries (riv system))))
+
+         (flow (riv system)))
 
        _)
 
@@ -173,51 +157,61 @@
 
    )
 
-  (dam [_]))
+  (ebb [_]))
 
 (defn watershed []
   (->Watershed {}))
 
-(defn river [title tributaries stream flow dam]
-  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) stream flow dam))
+(defn river [title tributaries sieve on-dammed]
+  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-dammed))
 
+(defn periodical
+  [streams period fnc]
+
+  (let [val (atom (vec (map (fn [x] nil) streams)))]
+
+    (if (empty? @val)
+
+      (s/periodically period fnc)
+
+      (do
+        (loop [s streams]
+
+          (let [index (dec (count s))]
+
+            (s/consume (fn [x] (swap! val assoc index x)) (last s))
+
+            (if (> index 0)
+
+              (recur (butlast s)))))
+
+        (s/map (fn [x] (if-not (empty? x) (fnc x))) (s/periodically period (fn [] (mapcat identity @val))))))))
 
 ;TEST######################
+
+(def test-fn (fn [x] (periodical x 1000 identity)))
 
 (def test-system (->
 
                   (watershed)
 
-                  (add-river (river :reef [] nil nil (fn [] (println "reef removed :("))))
-                  (add-river (river :coral [:reef] nil nil (fn [] (println "coral removed :("))))
-                  (add-river (river :pond [:coral] nil nil (fn [] (println "pond removed :("))))
-                  (add-river (river :lake [:coral] nil nil (fn [] (println "lake removed :("))))
-                  (add-river (river :carrot [:lake] nil nil (fn [] (println "carrot removed :("))))
-                  (add-river (river :beans [:lake] nil nil (fn [] (println "beans removed :("))))))
+                  (add-river (river :reef [] (fn [x] (periodical x 1000 (fn [] [1]))) (fn [] (println "reef removed :("))))
+                  (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
+                  (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
+                  (add-river (river :lake [:coral] test-fn (fn [] (println "lake removed :("))))
+                  (add-river (river :carrot [:lake] test-fn (fn [] (println "carrot removed :("))))
+                  (add-river (river :beans [:lake] test-fn (fn [] (println "beans removed :("))))))
 
 (dam-river test-system :reef)
 
+(flow test-system)
 
+(s/consume #(println "Beans: " %) (:stream (:beans (:system test-system))))
 
+;(s/consume println (:stream (:reef (:system test-system))))
 
+;(s/consume #(println "coral: " %) (:stream (:coral (:system test-system))))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+;Fix the startup...figure out why nothing is printing...
 
 
