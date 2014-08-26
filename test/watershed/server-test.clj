@@ -1,15 +1,17 @@
-(ns server-test
+(ns watershed.server-test
   (:require [lamina.core :as lamina]
           [aleph.udp :as aleph-udp]
           [gloss.core :as gloss]
           [aleph.tcp :as aleph]
           [manifold.deferred :as d]
-          [watershed :as w]
+          [watershed.core :as w]
+          [watershed.aqueduct :as a]
+          [clojure.pprint :as p]
           [manifold.stream :as s]))
 
-(def test-aqueduct (aqueduct [:reef :coral]))
+(def test-aqueduct (a/aqueduct [:reef :coral]))
 
-(def server (flow test-aqueduct))
+(def server (a/flow test-aqueduct))
 
 (def reef-client (lamina/wait-for-result (aleph/tcp-client {:host "localhost",
                                                 :port 10000,
@@ -38,12 +40,12 @@
               
               (w/add-river (w/source :reef (fn [] (s/map (fn [y] (str {:reef y})) (:sink (:reef (:aqueduct test-aqueduct))))) (fn [] (println "reef removed"))))
               
-              (w/add-river (w/estuary :reef-client [:coral] (fn [] (s/map (fn [y] (str {:reef y})) (:sink (:reef (:aqueduct test-aqueduct))))) (fn [] (println "reef-client removed"))))
+              (w/add-river (w/estuary :reef-client [:coral] (fn [x] (client-stream (:source (:reef (:aqueduct test-aqueduct))) x)) (fn [] (println "reef-client removed"))))
               
               ))
 
-(w/flow networked-system)
+(w/flow kernel)
 
 (lamina/receive-all reef-client #(println "Reef client: " %))
 
-;(lamina/enqueue reef-client "1")
+(lamina/enqueue reef-client "1")

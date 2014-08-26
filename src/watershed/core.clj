@@ -1,6 +1,8 @@
-(ns watershed
+(ns watershed.core
   (:require [manifold.deferred :as d]
             [manifold.stream :as s]
+            [clojure.pprint :as p]
+            [clojure.zip :as z]
             [lamina.core :as l]))
 
 (defprotocol ITide
@@ -89,6 +91,19 @@
 ;Flow: How the tributaries flow into the river
 ;Ebb: what happens when the river closes
 
+(defn- tree 
+  [system state start-order]
+  
+  (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? start-order z)) (conj x y) x)) (sequence nil) (zipmap (keys state) (map keys (map :tributaries (vals system)))))
+
+        state (reduce dissoc state possible)]   
+
+    (if (empty? state)
+
+      (seq possible)
+      
+      (conj possible (tree system state possible)))))
+  
 
 (defrecord Watershed [system]
 
@@ -148,7 +163,7 @@
 
            start-order
 
-           (let [new-possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? start-order z)) (conj x y) x)) [] (zipmap (keys state) (map keys (map :tributaries (vals system)))))]
+           (let [new-possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? start-order z)) (conj x y) x)) [] (zipmap (keys state) (map keys (map :tributaries (vals system)))))]          
 
              (recur new-possible
 
@@ -168,7 +183,9 @@
 
        _)))
 
-  (ebb [_]))
+  (ebb [_]
+                 
+    (reduce ebb-river _ (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map keys (map :tributaries (vals system))))))))
 
 (defn watershed []
   (->Watershed {}))
@@ -219,11 +236,13 @@
 ;                 (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
 ;                 (add-river (estuary :creek [:lake] (fn [x] (s/consume println (apply s/zip x))) (fn [] (println "creek removed :("))))))
 ;
-;                 
-;                 
+;(def tree (tree (:system test-system) (:system test-system) []))
 ;
+;(def zipper (z/seq-zip tree))
+
 ;(flow test-system)
-;
+
 ;(s/consume #(println "Creek: " %) (:stream (:creek (:system test-system))))
+
 
 

@@ -1,10 +1,10 @@
-(ns aqueduct
+(ns watershed.aqueduct
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
             [gloss.core :as gloss]
             [aleph.tcp :as aleph]
             [manifold.deferred :as d]
-            [watershed :as w]
+            [watershed.core :as w]
             [manifold.stream :as s])
   (:use [clojure.string :only (join split)]))
 

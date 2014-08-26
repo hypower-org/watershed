@@ -1,10 +1,10 @@
-(ns client-test
+(ns watershed.client-test
   (:require [lamina.core :as lamina]
           [aleph.udp :as aleph-udp]
           [gloss.core :as gloss]
           [aleph.tcp :as aleph]
           [manifold.deferred :as d]
-          [watershed :as w]
+          [watershed.core :as w]
           [manifold.stream :as s]))
 
 (def coral-client (lamina/wait-for-result (aleph/tcp-client {:host "10.10.10.5",
