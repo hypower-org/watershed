@@ -1,11 +1,7 @@
 (ns watershed
-  (:use [lamina.core])
   (:require [manifold.deferred :as d]
-            [manifold.stream :as s])
-  (:import [lamina.core.channel Channel]
-           [java.util.concurrent TimeUnit]
-           [java.util.concurrent Executors]
-           [java.util.concurrent ScheduledThreadPoolExecutor]))
+            [manifold.stream :as s]
+            [lamina.core :as l]))
 
 (defprotocol ITide
   (flow [_])
@@ -32,7 +28,7 @@
 
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
 
-(defrecord River [title tributaries stream sieve on-dammed]
+(defrecord River [title tributaries stream sieve on-ebbed]
 
   ITide
 
@@ -49,20 +45,49 @@
 
    (s/close! stream)
 
-   (on-dammed)))
+   (on-ebbed)))
+
+(defrecord Source [title stream sieve on-ebbed]
+  
+  ITide 
+  
+  (flow 
+    [_]
+    (s/connect (sieve) stream))
+  
+  (ebb 
+    [_]
+    
+    (s/close! stream)
+    
+    (on-ebbed)))
+
+(defrecord Estuary [title tributaries sieve on-ebbed]
+  
+  ITide 
+  
+  (flow 
+    [_]
+    
+    (sieve (vals tributaries)))
+  
+  (ebb 
+    [_]
+    
+    (doseq [s (vals tributaries)]
+      (s/close! s))
+    
+    (on-ebbed)))
 
 (defprotocol IWatershed
   (add-river [_ river])
-  (dam-river [_ title]))
+  (ebb-river [_ title]))
 
 ;Title is the name of the rivers
 ;Tributaries: The dependencies of a river (i.e., the things that compose it)
 ;Stream: the output of the river.
 ;Flow: How the tributaries flow into the river
-;Dam: what happens when the river closes
-
-
-;Create system to start everything...
+;Ebb: what happens when the river closes
 
 
 (defrecord Watershed [system]
@@ -75,25 +100,25 @@
 
    (assoc-in _ [:system (:title river)] river))
 
-  (dam-river
+  (ebb-river
    [_ title]
 
-   @(run-pipeline
+   @(l/run-pipeline
 
      title
 
      (fn
        [x]
 
-       (loop [dammed []
+       (loop [ebbed []
 
-              to-dam (dependents system x)]
+              to-ebb (dependents system x)]
 
-         (if (empty? to-dam)
+         (if (empty? to-ebb)
 
-           (distinct (conj (mapcat identity dammed) title))
+           (distinct (conj (mapcat identity ebbed) title))
 
-           (recur (conj dammed to-dam) (mapcat (fn [x] (dependents system x)) to-dam)))))
+           (recur (conj ebbed to-ebb) (mapcat (fn [x] (dependents system x)) to-ebb)))))
 
      (fn [x]
 
@@ -105,17 +130,7 @@
 
    [_]
 
-   ;(let [sources (map system tributaries)
-
-   ;     not-avilable (reduce-kv (fn [x y z] (if (nil? z) (conj x y) x)) [] (zipmap tributaries sources))]
-
-   ;(if (empty? not-avilable)
-
-   ; (assoc-in _ [:system title] {:tributaries tributaries :stream stream :flow flow :dam dam})
-
-   ;(throw (Exception. (str not-avilable " were not available")))))
-
-   @(run-pipeline
+   @(l/run-pipeline
 
      system
 
@@ -158,8 +173,14 @@
 (defn watershed []
   (->Watershed {}))
 
-(defn river [title tributaries sieve on-dammed]
-  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-dammed))
+(defn river [title tributaries sieve on-ebbed]
+  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-ebbed))
+
+(defn source [title sieve on-ebbed]
+  (->Source title (s/stream) sieve on-ebbed))
+
+(defn estuary [title tributaries sieve on-ebbed]
+  (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed))
 
 (defn periodical
   [streams period fnc]
@@ -183,29 +204,26 @@
 
         (s/map (fn [x] (if-not (empty? x) (fnc x))) (s/periodically period (fn [] (mapcat identity @val))))))))
 
-;TEST######################
+;TEST###################################################################################################################################
 
-(def test-fn (fn [x] (periodical x 1000 identity)))
-
-(def test-system (->
-
-                  (watershed)
-
-                  (add-river (river :reef [] (fn [x] (periodical x 1000 (fn [] [1]))) (fn [] (println "reef removed :("))))
-                  (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
-                  (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
-                  (add-river (river :lake [:coral] test-fn (fn [] (println "lake removed :("))))
-                  (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
-                  (add-river (river :creek [:lake] test-fn (fn [] (println "creek removed :("))))))
-
-(flow test-system)
-
-;(s/consume #(println "Beans: " %) (:stream (:creek (:system test-system))))
-
-;(s/consume println (:stream (:reef (:system test-system))))
-
-;(s/consume #(println "coral: " %) (:stream (:coral (:system test-system))))
-
-;(dam-river test-system :reef)
+;(def test-fn (fn [x] (periodical x 1000 identity)))
+;
+;(def test-system (->
+;
+;                 (watershed)
+;
+;                 (add-river (source :reef (fn [] (periodical [] 1000 (fn [] [1]))) (fn [] (println "reef removed :("))))
+;                 (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
+;                 (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
+;                 (add-river (river :lake [:coral] test-fn (fn [] (println "lake removed :("))))
+;                 (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
+;                 (add-river (estuary :creek [:lake] (fn [x] (s/consume println (apply s/zip x))) (fn [] (println "creek removed :("))))))
+;
+;                 
+;                 
+;
+;(flow test-system)
+;
+;(s/consume #(println "Creek: " %) (:stream (:creek (:system test-system))))
 
 
