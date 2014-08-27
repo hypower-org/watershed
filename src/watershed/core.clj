@@ -1,4 +1,5 @@
 (ns watershed.core
+  (:use [clojure.walk])
   (:require [manifold.deferred :as d]
             [manifold.stream :as s]
             [clojure.pprint :as p]
@@ -94,15 +95,15 @@
 (defn- tree 
   [system state start-order]
   
-  (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? start-order z)) (conj x y) x)) (sequence nil) (zipmap (keys state) (map keys (map :tributaries (vals system)))))
+  (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? (flatten start-order) z)) (conj x y) x)) [] (zipmap (keys state) (map keys (map :tributaries (vals system)))))
 
         state (reduce dissoc state possible)]   
 
     (if (empty? state)
 
-      (seq possible)
+      (seq possible)  
       
-      (conj possible (tree system state possible)))))
+      (seq (conj possible (tree system state (conj start-order possible)))))))
   
 
 (defrecord Watershed [system]
@@ -147,41 +148,28 @@
 
    @(l/run-pipeline
 
-     system
+      ;In the future, parallelize starting sequence
 
-     ;In the future, parallelize starting sequence
+      nil
 
-     (fn [system]
+      (fn [_]
+        
+        (tree system system nil))
 
-       (loop [possible (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map keys (map :tributaries (vals system)))))
 
-              start-order possible
-
-              state (reduce dissoc system start-order)]
-
-         (if (empty? state)
-
-           start-order
-
-           (let [new-possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? start-order z)) (conj x y) x)) [] (zipmap (keys state) (map keys (map :tributaries (vals system)))))]          
-
-             (recur new-possible
-
-                    (reduce conj start-order new-possible)
-
-                    (reduce dissoc state new-possible))))))
-
-     (fn [x] (println "Starting order: " x) x)
-
-     (fn [start-order]
-
-       (doseq [riv start-order]
-
-         (mapv s/connect (map :stream (map system (keys (:tributaries (riv system))))) (vals (:tributaries (riv system))))
-
-         (flow (riv system)))
-
-       _)))
+      (fn [x] (println "Dependency tree: " x) x)
+      
+      (fn [dependency-tree]
+        
+        (postwalk (fn [x] (when-let [riv (get system x)] 
+                            
+                            (mapv s/connect (map :stream (map system (keys (:tributaries riv)))) (vals (:tributaries riv)))
+                            
+                            (flow riv)))
+                  
+                  dependency-tree) 
+        
+        _)))
 
   (ebb [_]
                  
@@ -221,28 +209,13 @@
 
         (s/map (fn [x] (if-not (empty? x) (fnc x))) (s/periodically period (fn [] (mapcat identity @val))))))))
 
-;TEST###################################################################################################################################
 
-;(def test-fn (fn [x] (periodical x 1000 identity)))
-;
-;(def test-system (->
-;
-;                 (watershed)
-;
-;                 (add-river (source :reef (fn [] (periodical [] 1000 (fn [] [1]))) (fn [] (println "reef removed :("))))
-;                 (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
-;                 (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
-;                 (add-river (river :lake [:coral] test-fn (fn [] (println "lake removed :("))))
-;                 (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
-;                 (add-river (estuary :creek [:lake] (fn [x] (s/consume println (apply s/zip x))) (fn [] (println "creek removed :("))))))
-;
-;(def tree (tree (:system test-system) (:system test-system) []))
-;
-;(def zipper (z/seq-zip tree))
 
-;(flow test-system)
 
-;(s/consume #(println "Creek: " %) (:stream (:creek (:system test-system))))
+
+
+
+
 
 
 

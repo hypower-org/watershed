@@ -7,7 +7,7 @@
           [watershed.core :as w]
           [manifold.stream :as s]))
 
-(def coral-client (lamina/wait-for-result (aleph/tcp-client {:host "10.10.10.5",
+(def coral-client (lamina/wait-for-result (aleph/tcp-client {:host "10.10.10.2",
                                                  :port 10000,
                                                  :frame (gloss/string :utf-8 :delimiters ["\r\n"])})))
 
