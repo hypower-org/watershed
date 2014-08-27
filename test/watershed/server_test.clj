@@ -9,7 +9,7 @@
           [clojure.pprint :as p]
           [manifold.stream :as s]))
 
-(def test-aqueduct (a/aqueduct [:reef :coral]))
+(def test-aqueduct (a/aqueduct [:reef :coral]) 1000 (gloss/string :utf-8 :delimiters ["\r\n"]))
 
 (def server (a/flow test-aqueduct))
 

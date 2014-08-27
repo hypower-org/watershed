@@ -1,5 +1,30 @@
 (ns watershed.watershed-test 
-  (:use [watershed.core]))
+  (:use [watershed.core])
+  (:require [manifold.stream :as s]
+            [manifold.deferred :as d]
+            [clojure.zip :as z]))
+
+(defn periodical
+  [streams period fnc]
+
+  (let [val (atom (vec (map (fn [x] nil) streams)))]
+
+    (if (empty? @val)
+
+      (s/periodically period fnc)
+
+      (do
+        (loop [s streams]
+
+          (let [index (dec (count s))]
+
+            (s/consume (fn [x] (swap! val assoc index x)) (last s))
+
+            (if (> index 0)
+
+              (recur (butlast s)))))
+
+        (s/map (fn [x] (if-not (empty? x) (fnc x))) (s/periodically period (fn [] (mapcat identity @val))))))))
 
 (def test-fn (fn [x] (periodical x 1000 identity)))
 
@@ -10,9 +35,15 @@
                  (add-river (source :reef (fn [] (periodical [] 1000 (fn [] [1]))) (fn [] (println "reef removed :("))))
                  (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
                  (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
-                 (add-river (river :lake [:coral] test-fn (fn [] (println "lake removed :("))))
-                 (add-river (river :stream [:lake] test-fn (fn [] (println "stream removed :("))))
-                 (add-river (estuary :creek [:lake] (fn [x] (s/consume println (apply s/zip x))) (fn [] (println "creek removed :("))))))
+                 (add-river (river :stream [:coral] test-fn (fn [] (println "stream removed :("))))
+                 (add-river (river :lake [:stream] test-fn (fn [] (println "lake removed :("))))
+                 (add-river (estuary :creek [:stream] (fn [x] (s/consume println (apply s/zip x)) (d/deferred)) (fn [] (println "creek removed :("))))
+                 
+                 flow))
 
-(flow test-system)
+
+
+
+
+
 

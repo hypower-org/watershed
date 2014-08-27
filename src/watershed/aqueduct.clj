@@ -8,10 +8,6 @@
             [manifold.stream :as s])
   (:use [clojure.string :only (join split)]))
 
-(defprotocol ITide
-  (flow [_])
-  (ebb [_]))
-
 (defn- handler [ch client-info aqueduct]
   
   (lamina/receive
@@ -23,37 +19,48 @@
              
         (s/put! (:sink (msg aqueduct)) {msg ch}))))) 
 
-(defrecord Aqueduct [aqueduct]
+(defrecord Aqueduct [aqueduct port frame]
   
-  ITide
+  w/ITide
   
-  (flow [_]
+  (w/flow [_]
     
-    (let [server (aleph/start-tcp-server (fn [ch client-info] (handler ch client-info aqueduct)) {:port 10000, :frame (gloss/string :utf-8 :delimiters ["\r\n"])})]     
+    (let [server (aleph/start-tcp-server (fn [ch client-info] (handler ch client-info aqueduct)) {:port port, :frame frame})]     
       
       (d/let-flow [connections (apply d/zip (map s/take! (map :sink (vals aqueduct))))]        
         
-        (let [streams (reduce merge connections)]         
+        (let [streams (reduce merge connections)]           
           
-          (doseq [k (keys aqueduct)]           
+          (doseq [k (keys aqueduct)]      
             
-            (s/consume (fn [x] (lamina/enqueue (k streams) x)) (:source (k aqueduct)))
+            (let [stream (k streams)
+                  
+                  aq (k aqueduct)
+                  
+                  sink (:sink aq)
+                  
+                  source (:source aq)]
             
-            (lamina/receive-all (k streams) (fn [x] (s/put! (:sink (k aqueduct)) x))))
-          
-          (doseq [s (keys aqueduct)]
-            (s/on-closed (:sink (s aqueduct)) (fn [] (server) (lamina/close (s streams))))
-            (s/on-closed (:source (s aqueduct)) (fn [] (server) (lamina/close (s streams)))))))))
+              (s/connect (s/->source stream) sink)
+            
+              (s/connect source (s/->sink stream))     
+              
+              (s/on-closed sink (fn [] (server) (s/close! source) (lamina/close stream)))
+            
+              (s/on-closed source (fn [] (server) (s/close! sink) (lamina/close stream)))))))))
   
-  (ebb [_]
+  (w/ebb [_]
     
     (doseq [s (vals aqueduct)]
       (s/close! s))))
 
 
-(defn aqueduct [rivers]
+(defn aqueduct [rivers port frame]
   
-  (->Aqueduct (zipmap rivers (repeatedly (count rivers) (fn [] {:sink (s/stream) :source (s/stream)})))))
+  (->Aqueduct (zipmap rivers (repeatedly (count rivers) (fn [] {:sink (s/stream) :source (s/stream)}))) port frame))
+
+
+
 
 
 

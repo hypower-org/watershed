@@ -13,23 +13,26 @@
 (defn- dependents
   [system title]
 
-  (reduce-kv
-
-   (fn [x y z]
-
-     (let [tributaries (keys (:tributaries z))]
-
-       (if (some (fn [w] (= title w)) tributaries)
-
-         (conj x y)
-         x)))
-
-   #{} system))
+  (reduce-kv (fn [coll k v] (if (some #{title} (keys (:tributaries v))) (conj coll k) coll)) '() system))
 
 (defn- contains-many?
   [coll query-coll]
 
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
+
+(defn start-order 
+  
+  [state current-order]
+  
+  (loop [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map (comp keys :tributaries) (vals state))))        
+           
+         state (reduce dissoc state possible)] 
+    
+    (if (empty? state)
+      
+      possible
+      
+      (reduce conj possible (start-order state possible)))))
 
 (defrecord River [title tributaries stream sieve on-ebbed]
 
@@ -65,14 +68,14 @@
     
     (on-ebbed)))
 
-(defrecord Estuary [title tributaries sieve on-ebbed]
+(defrecord Estuary [title tributaries sieve on-ebbed result]
   
   ITide 
   
   (flow 
     [_]
     
-    (sieve (vals tributaries)))
+    (d/connect (sieve (vals tributaries)) result))
   
   (ebb 
     [_]
@@ -85,26 +88,6 @@
 (defprotocol IWatershed
   (add-river [_ river])
   (ebb-river [_ title]))
-
-;Title is the name of the rivers
-;Tributaries: The dependencies of a river (i.e., the things that compose it)
-;Stream: the output of the river.
-;Flow: How the tributaries flow into the river
-;Ebb: what happens when the river closes
-
-(defn- tree 
-  [system state start-order]
-  
-  (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? (flatten start-order) z)) (conj x y) x)) [] (zipmap (keys state) (map keys (map :tributaries (vals system)))))
-
-        state (reduce dissoc state possible)]   
-
-    (if (empty? state)
-
-      (seq possible)  
-      
-      (seq (conj possible (tree system state (conj start-order possible)))))))
-  
 
 (defrecord Watershed [system]
 
@@ -138,42 +121,43 @@
 
      (fn [x]
 
-       (reduce (fn [y z] (ebb (z system)) (dissoc y z)) system x))))
+       (reduce (fn [y z] (ebb (z system)) (dissoc y z)) system x)
+       
+       (map (fn [y] (if (= (type (y system)) watershed.core.Estuary) {y (:result (y system))})) x)
+       
+       )))
 
   ITide
 
   (flow
-
-   [_]
-
-   @(l/run-pipeline
-
-      ;In the future, parallelize starting sequence
-
-      nil
-
-      (fn [_]
-        
-        (tree system system nil))
-
-
-      (fn [x] (println "Dependency tree: " x) x)
+    [_]
+    
+    @(l/run-pipeline
+       
+    system
+    
+    (fn [system]
       
-      (fn [dependency-tree]
+      (start-order system nil))
+    
+    (fn [x] (println "Starting order: " x) x)
+    
+    (fn [start-order]     
+      
+      (doseq [riv start-order]
         
-        (postwalk (fn [x] (when-let [riv (get system x)] 
-                            
-                            (mapv s/connect (map :stream (map system (keys (:tributaries riv)))) (vals (:tributaries riv)))
-                            
-                            (flow riv)))
-                  
-                  dependency-tree) 
+        (let [riv-value (riv system)
+              
+              tributaries (:tributaries riv-value)]         
         
-        _)))
+          (mapv s/connect (map (comp :stream system) (keys tributaries)) (vals tributaries))
+        
+          (flow riv-value)))))
+    _)
 
   (ebb [_]
                  
-    (reduce ebb-river _ (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map keys (map :tributaries (vals system))))))))
+    (apply merge (mapcat (fn [x] (ebb-river _ x)) (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map (comp keys :tributaries) (vals system))))))))
 
 (defn watershed []
   (->Watershed {}))
@@ -185,35 +169,7 @@
   (->Source title (s/stream) sieve on-ebbed))
 
 (defn estuary [title tributaries sieve on-ebbed]
-  (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed))
-
-(defn periodical
-  [streams period fnc]
-
-  (let [val (atom (vec (map (fn [x] nil) streams)))]
-
-    (if (empty? @val)
-
-      (s/periodically period fnc)
-
-      (do
-        (loop [s streams]
-
-          (let [index (dec (count s))]
-
-            (s/consume (fn [x] (swap! val assoc index x)) (last s))
-
-            (if (> index 0)
-
-              (recur (butlast s)))))
-
-        (s/map (fn [x] (if-not (empty? x) (fnc x))) (s/periodically period (fn [] (mapcat identity @val))))))))
-
-
-
-
-
-
+  (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed (d/deferred)))
 
 
 
