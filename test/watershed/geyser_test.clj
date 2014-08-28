@@ -28,7 +28,9 @@
     
     w/flow)) 
 
-;(def result (w/ebb watershed))
+(def result (w/ebb watershed))
+
+result
 
 
 

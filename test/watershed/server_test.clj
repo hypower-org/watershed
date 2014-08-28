@@ -6,50 +6,44 @@
           [manifold.deferred :as d]
           [watershed.core :as w]
           [watershed.aqueduct :as a]
+          [watershed.faucet :as f]
           [clojure.pprint :as p]
           [manifold.stream :as s]))
 
-(def test-aqueduct (a/aqueduct [:reef :coral]) 1000 (gloss/string :utf-8 :delimiters ["\r\n"]))
+(def test-aqueduct (a/aqueduct [:reef :coral] 10000 (gloss/string :utf-8 :delimiters ["\r\n"])))
 
-(def server (a/flow test-aqueduct))
+(def server (w/flow test-aqueduct))
 
-(def reef-client (lamina/wait-for-result (aleph/tcp-client {:host "localhost",
-                                                :port 10000,
-                                                :frame (gloss/string :utf-8 :delimiters ["\r\n"])})))
+(def reef-client (f/faucet :reef "10.10.10.5" 10000 (gloss/string :utf-8 :delimiters ["\r\n"])))
 
-;Client connects to server as :reef.
-
-(lamina/enqueue reef-client ":reef")
+(w/flow reef-client)
 
 (defn client-stream
   [client streams]
-  
-  (println streams)
   
   (doseq [s streams]
   
     (s/connect s client)))
 
-(def kernel (-> 
+(def test-network (-> 
                         
-              (w/watershed)            
+                    (w/watershed)            
                                              
-              (w/add-river (w/estuary :coral-client [:reef] (fn [x] (client-stream (:source (:coral (:aqueduct test-aqueduct))) x)) (fn [] (println "coral-client removed"))))
+                    (w/add-river (w/estuary :coral-client [:reef] (fn [x] (client-stream (:source (:coral (:aqueduct test-aqueduct))) x)) (fn [] (println "coral-client removed"))))
               
-              (w/add-river (w/source :coral (fn [] (s/map (fn [y] (str {:coral y})) (:sink (:coral (:aqueduct test-aqueduct))))) (fn [] (println "coral removed"))))
+                    (w/add-river (w/source :coral (fn [] (s/map (fn [y] (str {:coral y})) (:sink (:coral (:aqueduct test-aqueduct))))) (fn [] (println "coral removed"))))
               
-              (w/add-river (w/source :reef (fn [] (s/map (fn [y] (str {:reef y})) (:sink (:reef (:aqueduct test-aqueduct))))) (fn [] (println "reef removed"))))
+                    (w/add-river (w/source :reef (fn [] (s/map (fn [y] (str {:reef y})) (:sink (:reef (:aqueduct test-aqueduct))))) (fn [] (println "reef removed"))))
               
-              (w/add-river (w/estuary :reef-client [:coral] (fn [x] (client-stream (:source (:reef (:aqueduct test-aqueduct))) x)) (fn [] (println "reef-client removed"))))
+                    (w/add-river (w/estuary :reef-client [:coral] (fn [x] (client-stream (:source (:reef (:aqueduct test-aqueduct))) x)) (fn [] (println "reef-client removed"))))
               
-              ))
+                    ))
 
-(w/flow kernel)
+(w/flow test-network)
 
-(lamina/receive-all reef-client #(println "Reef client: " %))
+(s/consume #(println "Reef client: " %) (:sink reef-client))
 
-(lamina/enqueue reef-client "1")
-
+(s/put! (:source reef-client) "1")
 
 
 

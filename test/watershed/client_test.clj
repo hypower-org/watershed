@@ -5,17 +5,17 @@
           [aleph.tcp :as aleph]
           [manifold.deferred :as d]
           [watershed.core :as w]
+          [watershed.faucet :as f]
+          [watershed.aqueduct :as a]
           [manifold.stream :as s]))
 
-(def coral-client (lamina/wait-for-result (aleph/tcp-client {:host "10.10.10.2",
-                                                 :port 10000,
-                                                 :frame (gloss/string :utf-8 :delimiters ["\r\n"])})))
+(def coral-client (f/faucet :coral "10.10.10.5" 10000 (gloss/string :utf-8 :delimiters ["\r\n"])))
 
-(lamina/enqueue coral-client ":coral")
+(w/flow coral-client)
 
-(lamina/receive-all coral-client #(println "Coral client: " %))
+(s/consume #(println "Coral client: " %) (:sink coral-client))
 
-;(lamina/enqueue coral-client "1")
+(s/put! (:source coral-client) "1")
 
 
 
