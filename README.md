@@ -60,28 +60,38 @@ Each of these allow for easy composition of systems:
 
 (require '[manifold.streams :as s])
 
-(-> (watershed)
+(def w (-> (watershed)
 
-        (source :beles
+           (source :beles
 
-                (fn [] (s/periodically 1000 (fn [] [:water]))))
+                 (fn [] (s/periodically 1000 (fn [] [:water]))))
         
-        (river :blue-nile 
+           (river :blue-nile 
 
-               [:beles] 
+                 [:beles] 
 
-               (fn [x] (s/map identity (apply s/zip x))))
+                 (fn [x] (s/map identity (apply s/zip x))))
                  
-        (estuary :waterfall 
+           (estuary :waterfall 
 
                  [:blue-nile]
           
                  (fn [x] (s/reduce conj x)))
         
-        flow)
+           flow))
+
+```
+Once a watershed has been created, it can be started with 'flow'.  Flow connects all of the rivers in the watershed via the supplied tributaries.  
+
+After a watershed has been started, 'ebb' can be used to close all of the rivers.  Calling ebb will return a map of estuaries to resulting deferreds.  
+
+```clojure
+
+(ebb w)
+
+=> {:waterfall << ... >>}
 
 ```
 
-Once a watershed has been created, it can be started with 'flow'.  Flow connects all of the rivers in the watershed via the supplied tributaries.  
 
 
