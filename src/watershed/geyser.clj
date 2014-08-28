@@ -8,7 +8,7 @@
             [manifold.stream :as s])
   (:use [clojure.string :only (join split)]))
 
-;UDP "client"
+;UDP broadcast client
 
 (defrecord Geyser [port frame sink source] 
   

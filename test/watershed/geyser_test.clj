@@ -22,10 +22,14 @@
   
     (w/add-river (w/source :broadcast  (fn [] (s/periodically 1000 (fn [] {:host "10.10.10.255" :port 8999 :message "Hello"}))) (fn [] )))
   
-    (w/add-river (w/river :geyser [:broadcast] (fn [x] (s/connect (first x) (:source g)) (:sink g)) (fn [])))
+    (w/add-river (w/river :geyser [:broadcast] (fn [x] (s/connect (first x) (:source g)) (s/map (fn [x] {(keyword (:host x)) x}) (:sink g))) (fn [])))
   
     (w/add-river (w/estuary :result [:geyser] (fn [x] (s/reduce merge (first x))) (fn [] )))
     
     w/flow)) 
 
 ;(def result (w/ebb watershed))
+
+
+
+

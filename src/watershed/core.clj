@@ -20,6 +20,13 @@
 
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
 
+;(defn recur-factorial [number]
+;  (let [helper (fn [acc n]
+;                 (if (zero? n)
+;                   acc
+;                   (recur (* acc n) (dec n))))]
+;    (helper 1 number)))
+
 (defn start-order 
   
   [state current-order]
@@ -33,6 +40,18 @@
       possible
       
       (reduce conj possible (start-order state possible)))))
+
+;(defn start-order-tail
+;  [state] 
+;  
+;  (letfn [(helper 
+;            [state current-order]
+;            (if (empty? state)
+;              current-order
+;              (recur (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map (comp keys :tributaries) (vals state)))) 
+;                     (reduce dissoc state possible))))]
+    
+                  
 
 (defrecord River [title tributaries stream sieve on-ebbed]
 
@@ -51,7 +70,8 @@
 
    (s/close! stream)
 
-   (on-ebbed)))
+   (if on-ebbed
+      (on-ebbed))))
 
 (defrecord Source [title stream sieve on-ebbed]
   
@@ -66,7 +86,8 @@
     
     (s/close! stream)
     
-    (on-ebbed)))
+    (if on-ebbed
+      (on-ebbed))))
 
 (defrecord Estuary [title tributaries sieve on-ebbed result]
   
@@ -83,7 +104,8 @@
     (doseq [s (vals tributaries)]
       (s/close! s))
     
-    (on-ebbed)))
+    (if on-ebbed
+      (on-ebbed))))
 
 (defprotocol IWatershed
   (add-river [_ river])
@@ -123,9 +145,7 @@
 
        (reduce (fn [y z] (ebb (z system)) (dissoc y z)) system x)
        
-       (map (fn [y] (if (= (type (y system)) watershed.core.Estuary) {y (:result (y system))})) x)
-       
-       )))
+       (map (fn [y] (let [riv (y system)] (if (= (type riv) watershed.core.Estuary) {y (:result riv)}))) x))))
 
   ITide
 
@@ -149,6 +169,8 @@
         (let [riv-value (riv system)
               
               tributaries (:tributaries riv-value)]         
+          
+          ;Add in assertion to check for proper connects?
         
           (mapv s/connect (map (comp :stream system) (keys tributaries)) (vals tributaries))
         
@@ -162,14 +184,23 @@
 (defn watershed []
   (->Watershed {}))
 
-(defn river [title tributaries sieve on-ebbed]
-  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-ebbed))
+(defn river 
+  ([title tributaries sieve] 
+    (river title tributaries sieve nil))
+  ([title tributaries sieve on-ebbed]
+    (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-ebbed)))
 
-(defn source [title sieve on-ebbed]
-  (->Source title (s/stream) sieve on-ebbed))
+(defn source 
+  ([title sieve]
+    (source title sieve nil))
+  ([title sieve on-ebbed]
+  (->Source title (s/stream) sieve on-ebbed)))
 
-(defn estuary [title tributaries sieve on-ebbed]
-  (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed (d/deferred)))
+(defn estuary 
+  ([title tributaries sieve]
+    (estuary title tributaries sieve nil))
+  ([title tributaries sieve on-ebbed]
+    (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed (d/deferred))))
 
 
 
