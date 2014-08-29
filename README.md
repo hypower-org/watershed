@@ -23,7 +23,7 @@ For example:
 
 ```
 
-In particular, the first argument is the title; the second is a vector containing the tributaries of the rivers; and the third is the sieve.  This function will receive an argument of a list of Manifold streams which represent the tributaries. They are passed to the sieve in the order specified by the tributaries argument.  For a river, This function *must* return a Manifold stream which represents the output of the river.   
+In particular, the first argument is the title; the second is a vector containing the tributaries of the rivers; and the third is the sieve.  This function will receive an argument of a list of Manifold streams that represent the tributaries. They are passed to the sieve in the order specified by the tributaries argument.  For a river, this function *must* return a Manifold stream that represents the output of the river.    
 
 For convenience, there are two other types of rivers: *sources* and *estuaries*.  
 
@@ -40,7 +40,7 @@ For example:
 ```
 
 
-Estuaries are the end of a river.  Thus, they have tributaries; but they do not have outputs.  Instead, they have an optional Manifold deferred which can contain a result.  
+Estuaries are the end of a river.  Thus, they have tributaries, but they do not have outputs.  Instead, they have an optional Manifold deferred which can contain a result.  
 
 For example: 
 
