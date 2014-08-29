@@ -1,1 +1,0 @@
-([:dependencies ([org.clojure/clojure "1.6.0"] [lamina/lamina "0.5.5-SNAPSHOT"] [incanter/incanter "1.5.5"] [manifold/manifold "0.1.0-alpha3"] [aleph/aleph "0.3.3"])])
