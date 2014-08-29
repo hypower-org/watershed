@@ -1,11 +1,11 @@
 Watershed
 =========
 
-A library for defining and connecting streams.  This library depends heavily on Manifold, which was developed by Zach Tellman ([Manifold](https://github.com/ztellman/manifold)).  
+A library for defining and connecting streams that depends heavily on Manifold, which was developed by Zach Tellman ([Manifold](https://github.com/ztellman/manifold)).  
 
 ![alt tag](http://www.montgomerycountymd.gov/DEP/Resources/Images/water/Outreach/What_is_a_Watershed_rockingham-nc.gif) 
 
-The purpose of this library is to allow the definition and connection of streams of information in a graph-like structure called a Watershed.  A watershed is composed of - ideally - many rivers.  
+The purpose of this library is to allow the definition and connection of streams of information in a graph-like structure called a Watershed.  A watershed is composed of-ideally-many rivers.  
 
 A river is defined by a name, its tributaries, and a sieve.  The name is simply an identifier; tributaries are the source rivers that feed into the sink river; and the sieve defines how the information "flows" from the tributaries to the output.
 
