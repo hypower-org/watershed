@@ -83,6 +83,10 @@ Each of these allow for easy composition of systems:
 ```
 Once a watershed has been created, it can be started with 'flow'.  Flow connects all of the rivers in the watershed via the supplied tributaries.  
 
+It is important to note that the output of each river will not be realized until the watershed has been started.  Until then, its output will be marked as ':not-started'.  
+
+Right now, this "run-time" allocation of dependencies eliminates the possibility of cycles ocurring in the Watershed.  Forthcoming improvments will alleviate this issue.  
+
 After a watershed has been started, 'ebb' can be used to close all of the rivers.  Calling ebb will return a map of estuaries to resulting deferreds.  
 
 ```clojure
