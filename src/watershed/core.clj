@@ -20,38 +20,18 @@
 
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
 
-;(defn recur-factorial [number]
-;  (let [helper (fn [acc n]
-;                 (if (zero? n)
-;                   acc
-;                   (recur (* acc n) (dec n))))]
-;    (helper 1 number)))
-
-(defn start-order 
+(defn- start-order
+  [state] 
   
-  [state current-order]
-  
-  (loop [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map (comp keys :tributaries) (vals state))))        
-           
-         state (reduce dissoc state possible)] 
+  (letfn [(helper 
+            [state current-order]
+            (if (empty? state)
+              current-order
+              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map (comp keys :tributaries) (vals state))))]
+                (recur (reduce dissoc state possible)
+                       (reduce conj current-order possible)))))]
     
-    (if (empty? state)
-      
-      possible
-      
-      (reduce conj possible (start-order state possible)))))
-
-;(defn start-order-tail
-;  [state] 
-;  
-;  (letfn [(helper 
-;            [state current-order]
-;            (if (empty? state)
-;              current-order
-;              (recur (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map (comp keys :tributaries) (vals state)))) 
-;                     (reduce dissoc state possible))))]
-    
-                  
+    (helper state nil)))                    
 
 (defrecord River [title tributaries stream sieve on-ebbed]
 
@@ -158,9 +138,7 @@
     
     (fn [system]
       
-      (start-order system nil))
-    
-    (fn [x] (println "Starting order: " x) x)
+      (start-order system))
     
     (fn [start-order]     
       
@@ -185,22 +163,34 @@
   (->Watershed {}))
 
 (defn river 
-  ([title tributaries sieve] 
-    (river title tributaries sieve nil))
-  ([title tributaries sieve on-ebbed]
-    (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-ebbed)))
+  
+  [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]    
+    
+  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-ebbed))
 
 (defn source 
-  ([title sieve]
-    (source title sieve nil))
-  ([title sieve on-ebbed]
-  (->Source title (s/stream) sieve on-ebbed)))
+
+  [title sieve on-ebbed & {:keys [on-ebbed] :or {on-ebbed nil}}]
+    
+  (->Source title (s/stream) sieve on-ebbed))
 
 (defn estuary 
-  ([title tributaries sieve]
-    (estuary title tributaries sieve nil))
-  ([title tributaries sieve on-ebbed]
-    (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed (d/deferred))))
+
+  [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
+  
+    (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed (d/deferred)))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

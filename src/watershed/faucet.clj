@@ -5,7 +5,7 @@
             [aleph.tcp :as aleph]
             [manifold.deferred :as d]
             [watershed.core :as w]
-            [watershed.time :as t]
+            [watershed.utils :as t]
             [manifold.stream :as s])
   (:use [clojure.string :only (join split)]))
 
