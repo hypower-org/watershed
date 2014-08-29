@@ -1,5 +1,6 @@
 (ns watershed.watershed-test 
-  (:use [watershed.core])
+  (:use [watershed.core]
+        [clojure.pprint])
   (:require [manifold.stream :as s]
             [manifold.deferred :as d]
             [clojure.zip :as z]))
@@ -32,14 +33,18 @@
 
                  (watershed)
 
-                 (add-river (source :reef (fn [] (periodical [] 1000 (fn [] [1]))) (fn [] (println "reef removed :("))))
-                 (add-river (river :coral [:reef] test-fn (fn [] (println "coral removed :("))))
-                 (add-river (river :pond [:coral] test-fn (fn [] (println "pond removed :("))))
-                 (add-river (river :stream [:coral] test-fn (fn [] (println "stream removed :("))))
-                 (add-river (river :lake [:stream] test-fn (fn [] (println "lake removed :("))))
-                 (add-river (estuary :creek [:stream] (fn [x] (s/consume println (apply s/zip x)) (d/deferred)) (fn [] (println "creek removed :("))))
+                 (add-river (source :reef (fn [] (periodical [] 1000 (fn [] [1]))) :on-ebbed (fn [] (println "reef removed :("))))
+                 (add-river (river :coral [:reef] test-fn :on-ebbed (fn [] (println "coral removed :("))))
+                 (add-river (river :pond [:coral] test-fn :on-ebbed (fn [] (println "pond removed :("))))
+                 (add-river (river :stream [:coral] test-fn :on-ebbed (fn [] (println "stream removed :("))))
+                 (add-river (river :lake [:stream] test-fn :on-ebbed (fn [] (println "lake removed :("))))
+                 (add-river (estuary :creek [:stream] (fn [x] (s/consume println (apply s/zip x)) (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
                  
                  flow))
+
+(ebb test-system)
+
+
 
 
 

@@ -1,91 +1,101 @@
 (ns watershed.core
-  (:use [clojure.walk])
   (:require [manifold.deferred :as d]
             [manifold.stream :as s]
-            [clojure.pprint :as p]
-            [clojure.zip :as z]
             [lamina.core :as l]))
 
 (defprotocol ITide
   (flow [_])
   (ebb [_]))
 
-(defn- dependents
+(defn dependents
   [system title]
 
-  (reduce-kv (fn [coll k v] (if (some #{title} (keys (:tributaries v))) (conj coll k) coll)) '() system))
+  (reduce-kv (fn [coll k v] (if (some #{title} (:tributaries v)) (conj coll k) coll)) '() system))
 
 (defn- contains-many?
   [coll query-coll]
 
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
 
-(defn- start-order
+(defn start-order
   [state] 
   
   (letfn [(helper 
             [state current-order]
             (if (empty? state)
               current-order
-              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map (comp keys :tributaries) (vals state))))]
+              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map :tributaries (vals state))))]
                 (recur (reduce dissoc state possible)
                        (reduce conj current-order possible)))))]
     
-    (helper state nil)))                    
+    (reverse (helper state nil))))
 
-(defrecord River [title tributaries stream sieve on-ebbed]
+(defrecord River [title tributaries output sieve on-ebbed]
 
   ITide
 
   (flow
-   [_]
-
-   (s/connect (sieve (vals tributaries)) stream))
+   [_])
 
   (ebb
    [_]
 
-   (doseq [s (vals tributaries)]
-     (s/close! s))
-
-   (s/close! stream)
+   (if (not= output :not-started)
+     (s/close! output))
 
    (if on-ebbed
       (on-ebbed))))
 
-(defrecord Source [title stream sieve on-ebbed]
+(defrecord Source [title output sieve on-ebbed]
   
   ITide 
   
   (flow 
-    [_]
-    (s/connect (sieve) stream))
+    [_])
   
   (ebb 
     [_]
     
-    (s/close! stream)
+    (if (not= output :not-started)
+      (s/close! output))
     
     (if on-ebbed
       (on-ebbed))))
 
-(defrecord Estuary [title tributaries sieve on-ebbed result]
+(defrecord Estuary [title tributaries output sieve on-ebbed]
   
   ITide 
   
   (flow 
-    [_]
-    
-    (d/connect (sieve (vals tributaries)) result))
+    [_])
   
   (ebb 
     [_]
     
-    (doseq [s (vals tributaries)]
-      (s/close! s))
-    
     (if on-ebbed
       (on-ebbed))))
+
+(defn start-in-order
+  
+  [system]
+
+  (let [order (start-order system)
+        
+        tributaries (mapv (comp :tributaries system) order)]
+
+    (reduce-kv (fn [started cardinal cur]               
+               
+                 (let [r (cur system)]  
+                   
+                   (assoc started cur (if (= (type r) watershed.core.Source)
+                     
+                                       ((:sieve r))
+                     
+                                       ((:sieve r) (map started (tributaries cardinal)))))))
+             
+               {}
+                           
+               (vec order))))
 
 (defprotocol IWatershed
   (add-river [_ river])
@@ -122,10 +132,8 @@
            (recur (conj ebbed to-ebb) (mapcat (fn [x] (dependents system x)) to-ebb)))))
 
      (fn [x]
-
-       (reduce (fn [y z] (ebb (z system)) (dissoc y z)) system x)
        
-       (map (fn [y] (let [riv (y system)] (if (= (type riv) watershed.core.Estuary) {y (:result riv)}))) x))))
+       (remove nil? (map (fn [y] (ebb (y system)) (let [riv (y system)] (if (= (type riv) watershed.core.Estuary) {y (:output riv)}))) x)))))
 
   ITide
 
@@ -138,26 +146,19 @@
     
     (fn [system]
       
-      (start-order system))
+      (start-in-order system))
     
-    (fn [start-order]     
+    (fn [started-system]     
       
-      (doseq [riv start-order]
-        
-        (let [riv-value (riv system)
-              
-              tributaries (:tributaries riv-value)]         
+        (reduce           
           
-          ;Add in assertion to check for proper connects?
-        
-          (mapv s/connect (map (comp :stream system) (keys tributaries)) (vals tributaries))
-        
-          (flow riv-value)))))
-    _)
+          (fn [x [k v]] (assoc-in x [:system k :output] v)) 
+           
+          _ started-system))))
 
   (ebb [_]
                  
-    (apply merge (mapcat (fn [x] (ebb-river _ x)) (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map (comp keys :tributaries) (vals system))))))))
+    (apply merge (mapcat (fn [x] (ebb-river _ x)) (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map :tributaries (vals system))))))))
 
 (defn watershed []
   (->Watershed {}))
@@ -166,19 +167,19 @@
   
   [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]    
     
-  (->River title (zipmap tributaries (repeatedly (count tributaries) s/stream)) (s/stream) sieve on-ebbed))
+  (->River title tributaries :not-started sieve on-ebbed))
 
 (defn source 
 
-  [title sieve on-ebbed & {:keys [on-ebbed] :or {on-ebbed nil}}]
+  [title sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
     
-  (->Source title (s/stream) sieve on-ebbed))
+  (->Source title :not-started sieve on-ebbed))
 
 (defn estuary 
 
   [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
   
-    (->Estuary title (zipmap tributaries (repeatedly (count tributaries) s/stream)) sieve on-ebbed (d/deferred)))
+    (->Estuary title tributaries :not-started sieve on-ebbed ))
 
 
 
