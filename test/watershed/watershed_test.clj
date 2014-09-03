@@ -1,6 +1,7 @@
 (ns watershed.watershed-test 
   (:use [watershed.core]
-        [clojure.pprint])
+        [watershed.graph]
+        [clojure.set])
   (:require [manifold.stream :as s]
             [manifold.deferred :as d]
             [clojure.zip :as z]))
@@ -38,11 +39,26 @@
                  (add-river (river :pond [:coral] test-fn :on-ebbed (fn [] (println "pond removed :("))))
                  (add-river (river :stream [:coral] test-fn :on-ebbed (fn [] (println "stream removed :("))))
                  (add-river (river :lake [:stream] test-fn :on-ebbed (fn [] (println "lake removed :("))))
-                 (add-river (estuary :creek [:stream] (fn [x] (s/consume println (apply s/zip x)) (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
+                 (add-river (estuary :creek [:lake] (fn [x] (s/consume println (apply s/zip x)) (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
                  
-                 flow))
+                 ))
 
-(ebb test-system)
+(def g (zipmap (keys (:system test-system)) (map (fn [x] {:edges (dependents (:system test-system) x)}) (keys (:system test-system)))))
+
+(def gt (zipmap (keys (:system test-system)) (map (fn [x] {:edges (:tributaries x)}) (vals (:system test-system)))))
+
+(def result (cycles g gt))
+
+           
+
+
+
+
+
+
+
+
+
 
 
 

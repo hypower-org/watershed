@@ -10,7 +10,9 @@
 (defn dependents
   [system title]
 
-  (reduce-kv (fn [coll k v] (if (some #{title} (:tributaries v)) (conj coll k) coll)) '() system))
+  (reduce-kv (fn [coll k v] 
+               
+               (if (some #{title} (:tributaries v)) (conj coll k) coll)) '() system))
 
 (defn- contains-many?
   [coll query-coll]
@@ -173,13 +175,13 @@
 
   [title sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
     
-  (->Source title :not-started sieve on-ebbed))
+  (->Source title ::not-started sieve on-ebbed))
 
 (defn estuary 
 
   [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
   
-    (->Estuary title tributaries :not-started sieve on-ebbed ))
+    (->Estuary title tributaries ::not-started sieve on-ebbed ))
 
 
 
