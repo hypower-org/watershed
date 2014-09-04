@@ -1,5 +1,7 @@
 (ns watershed.core
+  (:use [clojure.pprint])
   (:require [manifold.deferred :as d]
+            [watershed.graph :as g]
             [manifold.stream :as s]
             [lamina.core :as l]))
 
@@ -20,13 +22,13 @@
   (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
 
 (defn start-order
-  [state] 
+  [state & {:keys [active]}] 
   
   (letfn [(helper 
             [state current-order]
             (if (empty? state)
               current-order
-              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z)) (conj x y) x)) [] (zipmap (keys state) (map :tributaries (vals state))))]
+              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z) (contains-many? active z)) (conj x y) x)) [] (zipmap (keys state) (map :tributaries (vals state))))]
                 (recur (reduce dissoc state possible)
                        (reduce conj current-order possible)))))]
     
@@ -77,15 +79,30 @@
     (if on-ebbed
       (on-ebbed))))
 
+(defrecord Eddy [title tributaries output sieve on-ebbed initial]
+  
+  ITide 
+  
+  (flow 
+    [_])
+  
+  (ebb 
+    [_]
+    
+    (if on-ebbed
+      (on-ebbed))))
+
+;Clean up start-in-order and handle-cycles 
+
 (defn start-in-order
   
-  [system]
+  [system started]
 
-  (let [order (start-order system)
+  (let [order (start-order system :active (keys started))
         
         tributaries (mapv (comp :tributaries system) order)]
 
-    (reduce-kv (fn [started cardinal cur]               
+    (reduce-kv (fn [started cardinal cur]                     
                
                  (let [r (cur system)]  
                    
@@ -93,11 +110,56 @@
                      
                                        ((:sieve r))
                      
-                                       ((:sieve r) (map started (tributaries cardinal)))))))
+                                       (apply (:sieve r) (map started (tributaries cardinal)))))))
              
-               {}
+               started
                            
                (vec order))))
+
+
+(defn handle-cycles 
+  
+  [system] 
+    
+  (let [pre-allocated (some->> 
+    
+                        (g/cycles (reduce merge (map (fn [x] {x {:edges (dependents system x)}}) (keys system)))
+
+                                  (zipmap (keys system) (map (fn [x] {:edges (:tributaries x)}) (vals system))))
+      
+                        flatten
+    
+                        (map 
+      
+                          (fn [cyclic] 
+                                   
+                            (let [val (cyclic system)
+                                  
+                                  input (repeatedly (count (:tributaries val)) s/stream)
+                                  
+                                  output (s/stream)]
+                              
+                              (s/connect (apply (:sieve val) input) output)         
+        
+                              {cyclic {:input input :output output}})))
+      
+                        (apply merge))
+        
+        all-allocated (start-in-order (reduce dissoc system (keys pre-allocated))
+    
+                                      (zipmap (keys pre-allocated) (map :output (vals pre-allocated))))]
+    
+    (doall (map (fn [cyclic] 
+           
+                  (doall (map (fn [x y] (s/connect x y)) (map all-allocated (:tributaries (cyclic system))) (:input (cyclic pre-allocated)))))
+             
+                (keys pre-allocated)))
+    
+    (doseq [c (keys pre-allocated)] 
+      
+      (s/put! (:output (c pre-allocated)) (:initial (c system))))
+     
+    all-allocated))
 
 (defprotocol IWatershed
   (add-river [_ river])
@@ -167,21 +229,27 @@
 
 (defn river 
   
-  [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]    
+  [title tributaries sieve & {:keys [on-ebbed initial]}]    
     
-  (->River title tributaries :not-started sieve on-ebbed))
+  (->River title tributaries ::not-started sieve on-ebbed))
 
 (defn source 
 
-  [title sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
+  [title sieve & {:keys [on-ebbed]}]
     
   (->Source title ::not-started sieve on-ebbed))
 
 (defn estuary 
 
-  [title tributaries sieve & {:keys [on-ebbed] :or {on-ebbed nil}}]
+  [title tributaries sieve & {:keys [on-ebbed]}]
   
-    (->Estuary title tributaries ::not-started sieve on-ebbed ))
+    (->Estuary title tributaries ::not-started sieve on-ebbed))
+
+(defn eddy 
+
+  [title tributaries sieve initial & {:keys [on-ebbed]}]
+  
+    (->Eddy title tributaries ::not-started sieve on-ebbed initial))
 
 
 

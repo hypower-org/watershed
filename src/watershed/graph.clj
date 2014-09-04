@@ -24,7 +24,7 @@
 
 (defn dfs
   
-  [graph ]
+  [graph]
   
   (let [time (atom 0)]
   
@@ -66,18 +66,22 @@
   
   [dfs-result] 
   
-  (reverse (map first 
-       
-            (sort-by :result 
-                      
-                     (reduce merge 
-          
-                         (map (fn [[k v]] 
+  (->> 
+    
+    (map (fn [[k v]] 
             
-                                {k (dissoc (assoc v :result (/ (:start-time v) (:end-time v))) :start-time :end-time)})
+           {k (dissoc (assoc v :result (/ (:start-time v) (:end-time v))) :start-time :end-time)})
           
-                                 dfs-result))))))
-
+         dfs-result)
+    
+    (reduce merge)
+    
+    (sort-by :result) 
+    
+    (map first) 
+    
+    reverse))
+  
 (defn cycles
   
   [graph transpose-graph] 
@@ -95,3 +99,14 @@
     (dfs-tree transpose-graph :order)
     
     (remove #(< (count %) 2))))
+
+
+
+
+
+
+
+
+
+
+

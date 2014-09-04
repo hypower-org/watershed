@@ -8,6 +8,8 @@
 
 (defn periodical
   [streams period fnc]
+  
+  (println streams)
 
   (let [val (atom (vec (map (fn [x] nil) streams)))]
 
@@ -28,36 +30,43 @@
 
         (s/map (fn [x] (if-not (empty? x) (fnc x))) (s/periodically period (fn [] (mapcat identity @val))))))))
 
-(def test-fn (fn [x] (periodical x 1000 identity)))
+(def test-fn (fn [& x] (periodical x 1000 identity)))
 
 (def test-system (->
 
                  (watershed)
 
                  (add-river (source :reef (fn [] (periodical [] 1000 (fn [] [1]))) :on-ebbed (fn [] (println "reef removed :("))))
-                 (add-river (river :coral [:reef] test-fn :on-ebbed (fn [] (println "coral removed :("))))
-                 (add-river (river :pond [:coral] test-fn :on-ebbed (fn [] (println "pond removed :("))))
-                 (add-river (river :stream [:coral] test-fn :on-ebbed (fn [] (println "stream removed :("))))
-                 (add-river (river :lake [:stream] test-fn :on-ebbed (fn [] (println "lake removed :("))))
-                 (add-river (estuary :creek [:lake] (fn [x] (s/consume println (apply s/zip x)) (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
+                 
+                 (add-river (eddy :coral [:reef :stream]
+                                  
+                                  (fn [reef stream]                                    
+                                    
+                                    (s/map (fn [x] [(inc (first x))]) stream))                                              
+                                  
+                                  [2] :on-ebbed (fn [] (println "coral removed :("))))
+                 
+                 ;(add-river (river :pond [:coral] test-fn :on-ebbed (fn [] (println "pond removed :("))))
+                 
+                 (add-river (eddy :stream [:coral] test-fn [3] :on-ebbed (fn [] (println "stream removed :("))))
+                 
+                 ;(add-river (river :lake [:stream] test-fn :on-ebbed (fn [] (println "lake removed :("))))
+                 
+                 (add-river (estuary :creek [:stream] (fn [x] 
+                                                                                                               
+                                                        (s/consume println x) 
+                                                        
+                                                        (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
                  
                  ))
 
-(def g (zipmap (keys (:system test-system)) (map (fn [x] {:edges (dependents (:system test-system) x)}) (keys (:system test-system)))))
+(def g (reduce merge (map (fn [x] {x {:edges (dependents (:system test-system) x)}}) (keys (:system test-system)))))
 
 (def gt (zipmap (keys (:system test-system)) (map (fn [x] {:edges (:tributaries x)}) (vals (:system test-system)))))
 
 (def result (cycles g gt))
 
-           
-
-
-
-
-
-
-
-
+(def s (handle-cycles (:system test-system)))
 
 
 
