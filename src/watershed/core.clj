@@ -105,8 +105,6 @@
   
   (ebb [_]))
 
-;Clean up start-in-order and handle-cycles 
-
 (defn start-in-order
   
   [system started] 
@@ -135,11 +133,17 @@
 
 (defprotocol IWatershed
   (add-river [_ river])
-  (ebb-river [_ title]))
+  (ebb-river [_ title])
+  (supply-graph [_]))
 
 (defrecord Watershed [system]
 
   IWatershed
+  
+  (supply-graph 
+    [_] 
+    
+    (apply merge (map (fn [x] {x {:edges (dependents system x)}}) (keys system))))
 
   (add-river
 
@@ -248,7 +252,9 @@
 
                            (g/strongly-connected-components graph
 
-                                                            (g/transpose graph)))                                          
+                                                            (g/transpose graph)))      
+                         
+                         ;Remove singularities with no self-cyclic dependency
                             
                          (remove      
       
@@ -261,6 +267,8 @@
                                  (val (set (:tributaries (val possibly-cyclic))))))))
       
                          flatten
+                         
+                         ;pre-allocate streams for nodes with cyclic dependencie(s)
                         
                          (map 
       
@@ -280,7 +288,7 @@
         
         system-connected (start-in-order (reduce dissoc system (concat (keys cycles-handled) dams))
     
-                                         (zipmap (keys cycles-handled) (map :output (vals cycles-handled))))]
+                                 (zipmap (keys cycles-handled) (map :output (vals cycles-handled))))]
     
     ;connect cyclic elements to non-cyclic elements
     
@@ -290,7 +298,7 @@
              
                 (keys cycles-handled)))
     
-    ;TODO: Attach dams! 
+    ;associate started rivers into watershed and attach dams!
       
     (let [watershed (reduce           
           
@@ -304,7 +312,7 @@
         
       (doseq [c (keys cycles-handled)] 
       
-        ;Get the system rolling...could probably do this more efficiently.  Put initial values into cycles
+        ;Get the system rolling...could probably do this more effectively.  For right now, just put initial values into cycles
 		      
         (if-let [initial-value (:initial (c system))]
       

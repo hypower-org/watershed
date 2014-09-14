@@ -51,9 +51,7 @@
                                                         
                                                           (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
                    
-                   (add-river (dam :end [:stream] (fn [watershed & x] (s/map (fn [y] (watch watershed y)) (first x)))))
-                 
-                   ))
+                   (add-river (dam :end [:stream] (fn [watershed & x] (s/map (fn [y] (watch watershed y)) (first x)))))))
 
 ;(def g (reduce merge (map (fn [x] {x {:edges (dependents (:system test-system) x)}}) (keys (:system test-system)))))
 
