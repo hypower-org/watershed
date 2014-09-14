@@ -1,10 +1,29 @@
 (ns watershed.graph)
 
+(defn transpose 
+  [graph] 
+  
+  (let [nodes (keys graph)]
+  
+    (apply merge (map (fn [node] 
+         
+                         {node {:edges (reduce (fn [edges k]     
+                            
+                                                 (if (node (set (:edges (k graph)))) 
+                              
+                                                   (conj edges k)
+                                             
+                                                   edges))
+                              
+                                               [] nodes)}})
+                    
+                      nodes))))
+
 (defn dfs-visit 
   [graph node time tree]
   
   (if tree 
-    (swap! tree conj node))
+    (conj! tree node))
     
   (-> 
       
@@ -46,7 +65,7 @@
   
   (let [time (atom 0)
         
-        trees (vec (repeatedly (count order) (comp atom vector)))]
+        trees (vec (repeatedly (count order) (comp transient vector)))]
     
     (reduce-kv (fn [graph cardinal vertex] 
             
@@ -60,7 +79,7 @@
             
                order)
     
-    (map deref trees)))
+    (map persistent! trees)))
 
 (defn tally-dfs 
   
@@ -82,7 +101,7 @@
     
     reverse))
   
-(defn cycles
+(defn strongly-connected-components
   
   [graph transpose-graph] 
   
@@ -96,9 +115,7 @@
       
       vec)
     
-    (dfs-tree transpose-graph :order)
-    
-    (remove #(< (count %) 2))))
+    (dfs-tree transpose-graph :order)))
 
 
 

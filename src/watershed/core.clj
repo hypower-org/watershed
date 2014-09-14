@@ -5,6 +5,8 @@
             [manifold.stream :as s]
             [lamina.core :as l]))
 
+(declare compile*)
+
 (defprotocol ITide
   (flow [_])
   (ebb [_]))
@@ -28,7 +30,7 @@
             [state current-order]
             (if (empty? state)
               current-order
-              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z) (contains-many? active z)) (conj x y) x)) [] (zipmap (keys state) (map :tributaries (vals state))))]
+              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z) (contains-many? active z)) (conj x y) x)) [] state)]
                 (recur (reduce dissoc state possible)
                        (reduce conj current-order possible)))))]
     
@@ -44,7 +46,7 @@
   (ebb
    [_]
 
-   (if (not= output :not-started)
+   (if (not= output ::not-started)
      (s/close! output))
 
    (if on-ebbed
@@ -60,7 +62,7 @@
   (ebb 
     [_]
     
-    (if (not= output :not-started)
+    (if (not= output ::not-started)
       (s/close! output))
     
     (if on-ebbed
@@ -89,77 +91,47 @@
   (ebb 
     [_]
     
+    (if (not= output ::not-started)
+      (s/close! output))
+    
     (if on-ebbed
       (on-ebbed))))
+
+(defrecord Dam [title tributaries sieve] 
+  
+  ITide 
+  
+  (flow [_])
+  
+  (ebb [_]))
 
 ;Clean up start-in-order and handle-cycles 
 
 (defn start-in-order
   
-  [system started]
+  [system started] 
 
-  (let [order (start-order system :active (keys started))
+  (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) :active (keys started))
         
-        tributaries (mapv (comp :tributaries system) order)]
+        tributaries (mapv (comp :tributaries system) order)] 
 
-    (reduce-kv (fn [started cardinal cur]                     
+    (reduce-kv (fn [started cardinal cur]                        
                
-                 (let [r (cur system)]  
+                 (let [r (cur system)]                                     
                    
-                   (assoc started cur (if (= (type r) watershed.core.Source)
+                   (assoc started cur (cond 
+                                                                              
+                                        (= (type r) watershed.core.Source)
                      
-                                       ((:sieve r))
-                     
-                                       (apply (:sieve r) (map started (tributaries cardinal)))))))
+                                        ((:sieve r))
+                                                                              
+                                        :else
+               
+                                        (apply (:sieve r) (map started (tributaries cardinal)))))))
              
                started
                            
                (vec order))))
-
-
-(defn handle-cycles 
-  
-  [system] 
-    
-  (let [pre-allocated (some->> 
-    
-                        (g/cycles (reduce merge (map (fn [x] {x {:edges (dependents system x)}}) (keys system)))
-
-                                  (zipmap (keys system) (map (fn [x] {:edges (:tributaries x)}) (vals system))))
-      
-                        flatten
-    
-                        (map 
-      
-                          (fn [cyclic] 
-                                   
-                            (let [val (cyclic system)
-                                  
-                                  input (repeatedly (count (:tributaries val)) s/stream)
-                                  
-                                  output (s/stream)]
-                              
-                              (s/connect (apply (:sieve val) input) output)         
-        
-                              {cyclic {:input input :output output}})))
-      
-                        (apply merge))
-        
-        all-allocated (start-in-order (reduce dissoc system (keys pre-allocated))
-    
-                                      (zipmap (keys pre-allocated) (map :output (vals pre-allocated))))]
-    
-    (doall (map (fn [cyclic] 
-           
-                  (doall (map (fn [x y] (s/connect x y)) (map all-allocated (:tributaries (cyclic system))) (:input (cyclic pre-allocated)))))
-             
-                (keys pre-allocated)))
-    
-    (doseq [c (keys pre-allocated)] 
-      
-      (s/put! (:output (c pre-allocated)) (:initial (c system))))
-     
-    all-allocated))
 
 (defprotocol IWatershed
   (add-river [_ river])
@@ -204,25 +176,11 @@
   (flow
     [_]
     
-    @(l/run-pipeline
-       
-    system
-    
-    (fn [system]
-      
-      (start-in-order system))
-    
-    (fn [started-system]     
-      
-        (reduce           
-          
-          (fn [x [k v]] (assoc-in x [:system k :output] v)) 
-           
-          _ started-system))))
+    (compile* _))
 
   (ebb [_]
                  
-    (apply merge (mapcat (fn [x] (ebb-river _ x)) (reduce-kv (fn [x y z] (if (empty? z) (conj x y) x)) [] (zipmap (keys system) (map :tributaries (vals system))))))))
+    (apply merge (remove nil? (map (fn [y] (ebb (y system)) (let [riv (y system)] (if (= (type riv) watershed.core.Estuary) {y (:output riv)}))) (keys system))))))
 
 (defn watershed []
   (->Watershed {}))
@@ -250,6 +208,109 @@
   [title tributaries sieve initial & {:keys [on-ebbed]}]
   
     (->Eddy title tributaries ::not-started sieve on-ebbed initial))
+
+(defn dam 
+  [title tributaries sieve] 
+  
+  (->Dam title tributaries sieve))
+
+(defn compile*
+  
+  [^Watershed watershed] 
+    
+  (let [system (:system watershed)
+        
+        dams (reduce-kv (fn [coll k v] 
+                   
+                          (if (= (type v) watershed.core.Dam)
+                     
+                            (conj coll k)
+                     
+                            coll))
+                 
+                        [] system)
+        
+        possibly-cyclic (reduce-kv (fn [sys k v]  
+                                     
+                                     (let [t (type v)]
+                                     
+                                       (if-not (or (= t watershed.core.Estuary) (= t watershed.core.Source))                                       
+                                       
+                                         (assoc sys k v) 
+                                         
+                                         sys)))                                 
+                                   
+                                   {} (reduce dissoc system dams))
+        
+        cycles-handled (some->>                      
+                         
+                         (let [graph (apply merge (map (fn [x] {x {:edges (dependents possibly-cyclic x)}}) (keys possibly-cyclic)))]
+
+                           (g/strongly-connected-components graph
+
+                                                            (g/transpose graph)))                                          
+                            
+                         (remove      
+      
+                           (fn [x] 
+        
+                             (if (= (count x) 1)
+          
+                               (let [val (first x)] 
+                                
+                                 (val (set (:tributaries (val possibly-cyclic))))))))
+      
+                         flatten
+                        
+                         (map 
+      
+                           (fn [cyclic] 
+                                   
+                             (let [val (cyclic system)
+                                  
+                                   input (repeatedly (count (:tributaries val)) s/stream)
+                                  
+                                   output (s/stream)]
+                              
+                               (s/connect (apply (:sieve val) input) output)         
+        
+                               {cyclic {:input input :output output}})))                        
+      
+                         (apply merge))
+        
+        system-connected (start-in-order (reduce dissoc system (concat (keys cycles-handled) dams))
+    
+                                         (zipmap (keys cycles-handled) (map :output (vals cycles-handled))))]
+    
+    ;connect cyclic elements to non-cyclic elements
+    
+    (doall (map (fn [cyclic] 
+           
+                  (doall (map (fn [x y] (s/connect x y)) (map system-connected (:tributaries (cyclic system))) (:input (cyclic cycles-handled)))))
+             
+                (keys cycles-handled)))
+    
+    ;TODO: Attach dams! 
+      
+    (let [watershed (reduce           
+          
+                      (fn [x [k v]] (assoc-in x [:system k :output] v)) 
+           
+                      watershed system-connected)]
+      
+      (doseq [dam (map system dams)]
+
+        (apply (:sieve dam) (cons watershed (map system-connected (:tributaries dam)))))
+        
+      (doseq [c (keys cycles-handled)] 
+      
+        ;Get the system rolling...could probably do this more efficiently.  Put initial values into cycles
+		      
+        (if-let [initial-value (:initial (c system))]
+      
+          (s/put! (:output (c cycles-handled)) initial-value)))
+     
+      watershed)))
 
 
 
