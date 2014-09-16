@@ -1,4 +1,4 @@
-(ns watershed.faucet
+(ns net.faucet
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
             [gloss.core :as gloss]
@@ -43,6 +43,7 @@
         (if (lamina/channel? connection)
              
           (do           
+            
             (lamina/enqueue connection (str title))          
             
             (s/connect (s/->source connection) sink)            

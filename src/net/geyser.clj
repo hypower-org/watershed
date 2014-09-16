@@ -1,4 +1,4 @@
-(ns watershed.geyser
+(ns net.geyser
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
             [gloss.core :as gloss]
@@ -26,7 +26,9 @@
       
       (s/on-closed sink (fn [] (s/close! source) (lamina/force-close udp-socket)))
       
-      (s/on-closed source (fn [] (s/close! sink) (lamina/force-close udp-socket)))))
+      (s/on-closed source (fn [] (s/close! sink) (lamina/force-close udp-socket)))
+      
+      _))
   
   (w/ebb 
     [_]

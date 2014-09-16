@@ -161,15 +161,15 @@
      (fn
        [x]
 
-       (loop [ebbed []
+       (loop [ebbed #{}
 
               to-ebb (dependents system x)]
 
          (if (empty? to-ebb)
+           
+           (conj ebbed title)
 
-           (distinct (conj (mapcat identity ebbed) title))
-
-           (recur (conj ebbed to-ebb) (mapcat (fn [x] (dependents system x)) to-ebb)))))
+           (recur (clojure.set/union ebbed (set to-ebb)) (mapcat (fn [x] (dependents system x)) to-ebb)))))
 
      (fn [x]
        

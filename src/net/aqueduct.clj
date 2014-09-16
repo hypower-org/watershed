@@ -1,4 +1,4 @@
-(ns watershed.aqueduct
+(ns net.aqueduct
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
             [gloss.core :as gloss]

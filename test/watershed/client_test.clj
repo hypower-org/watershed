@@ -6,7 +6,7 @@
           [manifold.deferred :as d]
           [watershed.core :as w]
           [watershed.faucet :as f]
-          [watershed.aqueduct :as a]
+          [net.aqueduct :as a]
           [manifold.stream :as s]))
 
 (def coral-client (f/faucet :coral "10.10.10.5" 10000 (gloss/string :utf-8 :delimiters ["\r\n"])))

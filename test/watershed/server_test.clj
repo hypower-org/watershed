@@ -1,14 +1,14 @@
 (ns watershed.server-test
   (:require [lamina.core :as lamina]
-          [aleph.udp :as aleph-udp]
-          [gloss.core :as gloss]
-          [aleph.tcp :as aleph]
-          [manifold.deferred :as d]
-          [watershed.core :as w]
-          [watershed.aqueduct :as a]
-          [watershed.faucet :as f]
-          [clojure.pprint :as p]
-          [manifold.stream :as s]))
+            [aleph.udp :as aleph-udp]
+            [gloss.core :as gloss]
+            [aleph.tcp :as aleph]
+            [manifold.deferred :as d]
+            [watershed.core :as w]
+            [net.aqueduct :as a]
+            [net.faucet :as f]
+            [clojure.pprint :as p]
+            [manifold.stream :as s]))
 
 (def test-aqueduct (a/aqueduct [:reef :coral] 10000 (gloss/string :utf-8 :delimiters ["\r\n"])))
 
