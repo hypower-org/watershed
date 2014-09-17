@@ -9,7 +9,14 @@
             [net.networking :as net]
             [net.faucet :as f]
             [clojure.pprint :as p]
+            [watershed.utils :as u]
             [manifold.stream :as s]))
+
+(defn- ping 
+  
+  [time] 
+  
+  (u/time-passed time))
 
 (defn start 
   
@@ -17,11 +24,11 @@
   
   (-> 
     
-    @(net/cpu :10.10.10.3 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} :provides [:cpu-2-data] :requires [:cpu-1-data])
+    @(net/cpu :10.10.10.3 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 :provides [:cpu-2-data] :requires [:cpu-1-data])
     
     (w/add-river (w/estuary :test [:cpu-1-data] (fn [stream] (s/consume println stream))))
     
-    (w/add-river (w/source :cpu-2-data (fn [] (s/periodically 1000 (fn [] :cpu-2!)))))
+    (w/add-river (w/river :cpu-2-data [:cpu-1-data] (fn [stream] (s/map ping stream))))
                                                           
     w/flow))
   

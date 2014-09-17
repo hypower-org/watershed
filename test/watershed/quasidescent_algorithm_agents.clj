@@ -272,7 +272,7 @@
   
   (->
     
-    @(net/cpu :10.10.10.3 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 
+    @(net/cpu :10.10.10.3 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 
               
               :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :requires [:cloud])
   

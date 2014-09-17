@@ -108,8 +108,6 @@
 (defn start-in-order
   
   [system started] 
-  
-  (println "START: " (keys system) (keys started))
 
   (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) :active (keys started))
         
@@ -251,16 +249,6 @@
         cycles-handled (some->>                      
                            
                          (let [graph (apply merge (map (fn [x] {x {:edges (dependents possibly-cyclic x)}}) (keys possibly-cyclic)))]
-                           
-                           ;(println (keys system))
-                           
-                           ;(println (keys possibly-cyclic))
-                           
-                           ;(println graph)
-		                           
-                           (println "SCC: " (g/strongly-connected-components graph
-
-                                                                 (g/transpose graph)))
 
                            (g/strongly-connected-components graph
 

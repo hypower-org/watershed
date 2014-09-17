@@ -38,10 +38,24 @@
                                   (d/recur (s/take! s)))))))
          
          output))
+
+(defn- acc-fn 
   
-(defn elect-leader 
+  [[accumulation new]] 
   
-  [& {:keys [duration interval port] :or {duration 5000 interval 1000 port 8999}}]
+  (merge accumulation new))
+
+(defn- watch-fn 
+  
+  [watershed accumulation expected]
+  
+  (if (>= (count (keys accumulation)) expected)
+    
+    (w/ebb watershed)))
+  
+(defn- elect-leader 
+  
+  [neighbors & {:keys [duration interval port] :or {duration 5000 interval 1000 port 8999}}]
   
   (let [leader (atom nil)
         
@@ -51,27 +65,21 @@
             
              w/flow)       
         
-       watershed 
-
-         (-> 
+        watershed (-> 
   
-           (w/watershed)
+                    (w/watershed)
   
-           (w/add-river (w/source :broadcast  
-                           
-                                  (fn [] (s/periodically interval (fn [] {:host "10.10.10.255" :port port :message (str (u/cpu-units))})))))
+                    (w/add-river (w/source :broadcast (fn [] (s/periodically interval (fn [] {:host "10.10.10.255" :port port :message (str (u/cpu-units))})))))
   
-           (w/add-river (w/river :geyser [:broadcast] 
-                          
-                                 (fn [x] (s/connect x (:source g)) (s/map (fn [x] {(keyword (:host x)) x}) (:sink g)))))
+                    (w/add-river (w/river :geyser [:broadcast] (fn [x] (s/connect x (:source g)) (s/map (fn [y] {(keyword (:host y)) y}) (:sink g)))))
   
-           (w/add-river (w/estuary :result [:geyser] 
-                            
-                                   (fn [x] (s/reduce merge x))))
-    
-           w/flow)]
-  
-    (Thread/sleep duration)
+                    (w/add-river (w/estuary :result [:geyser] (fn [x] (s/reduce merge (s/map identity x)))))             
+           
+                    (w/add-river (w/eddy :accumulator [:accumulator :geyser] (fn [& streams] (s/map acc-fn (apply s/zip streams))) {}))
+           
+                    (w/add-river (w/dam :watch [:accumulator] (fn [w stream] (s/consume #(watch-fn w % neighbors) stream))))
+                                                                    
+                    w/flow)]
     
     (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
@@ -85,7 +93,7 @@
                                
                0
                                
-               @(:result (w/ebb watershed)))
+               @(:output (:result (:system watershed))))
   
     @leader))
 
@@ -123,9 +131,9 @@
     
 (defn cpu 
   
-  [ip graph & {:keys [port requires provides] :or {port 10000 requires [] provides []}}] 
+  [ip graph neighbors & {:keys [port requires provides] :or {port 10000 requires [] provides []}}] 
   
-  (let [chosen (elect-leader)]
+  (let [chosen (elect-leader neighbors)]
     
     (println chosen)
   

@@ -251,7 +251,7 @@
   
   (let [as
     
-        [{:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 0 :max 50 :tar 15}
+        [{:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 0 :max 20 :tar 15}
   
         {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 1 :max 15 :tar 17}
   
@@ -271,7 +271,7 @@
   
   (->
 
-     @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 
+     @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2
                
                :provides [:cloud] :requires [:agent-one :agent-two :agent-three :agent-four :agent-five])
   
@@ -283,9 +283,9 @@
                          
                          ))
     
-    (w/add-river (w/eddy :aggregator [:aggregator :cloud] (fn [& x] (s/map aggregator-fn (apply s/zip x))) []))
+    ;(w/add-river (w/eddy :aggregator [:aggregator :cloud] (fn [& x] (s/map aggregator-fn (apply s/zip x))) []))
         
-    (w/add-river (w/estuary :ui [:aggregator] (fn [x] (s/consume ui-fn x))))
+    ;(w/add-river (w/estuary :ui [:aggregator] (fn [x] (s/consume ui-fn x))))
     
     w/flow
     
@@ -297,7 +297,7 @@
 
 ;(def result (w/ebb system))
 
-(view p)
+;(view p)
 
 ;result
 
