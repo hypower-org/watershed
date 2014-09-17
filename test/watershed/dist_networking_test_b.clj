@@ -21,7 +21,7 @@
     
     (w/add-river (w/estuary :test [:cpu-1-data] (fn [stream] (s/consume println stream))))
     
-    (w/add-river (w/source :cpu-2-data (fn [] (periodically 1000 (fn [] :cpu-2!)))))
+    (w/add-river (w/source :cpu-2-data (fn [] (s/periodically 1000 (fn [] :cpu-2!)))))
                                                           
     w/flow))
   
