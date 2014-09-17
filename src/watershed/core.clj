@@ -108,6 +108,8 @@
 (defn start-in-order
   
   [system started] 
+  
+  (println "START: " (keys system) (keys started))
 
   (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) :active (keys started))
         
@@ -238,7 +240,7 @@
                                      
                                      (let [t (type v)]
                                      
-                                       (if-not (or (= t watershed.core.Estuary) (= t watershed.core.Source))                                       
+                                       (if (not (or (= t watershed.core.Estuary) (= t watershed.core.Source)))                                  
                                        
                                          (assoc sys k v) 
                                          
@@ -247,24 +249,34 @@
                                    {} (reduce dissoc system dams))
         
         cycles-handled (some->>                      
-                         
+                           
                          (let [graph (apply merge (map (fn [x] {x {:edges (dependents possibly-cyclic x)}}) (keys possibly-cyclic)))]
+                           
+                           ;(println (keys system))
+                           
+                           ;(println (keys possibly-cyclic))
+                           
+                           ;(println graph)
+		                           
+                           (println "SCC: " (g/strongly-connected-components graph
+
+                                                                 (g/transpose graph)))
 
                            (g/strongly-connected-components graph
 
                                                             (g/transpose graph)))      
-                         
+                                                
                          ;Remove singularities with no self-cyclic dependency
                             
                          (remove      
-      
-                           (fn [x] 
+                             
+                             (fn [x] 
         
-                             (if (= (count x) 1)
+                               (if (= (count x) 1)
           
-                               (let [val (first x)] 
+                                 (let [val (first x)] 
                                 
-                                 (val (set (:tributaries (val possibly-cyclic))))))))
+                                   (not (val (set (:tributaries (val possibly-cyclic)))))))))
       
                          flatten
                          

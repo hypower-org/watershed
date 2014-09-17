@@ -9,6 +9,7 @@
             [net.networking :as net]
             [net.faucet :as f]
             [clojure.pprint :as p]
+            [watershed.graph :as g]
             [manifold.stream :as s]))
 
 (use 'clojure.pprint)
@@ -253,13 +254,13 @@
     
         [{:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 0 :max 50 :tar 15}
   
-        {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 1 :max 15 :tar 17}
+         {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 1 :max 15 :tar 17}
   
-        {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 2 :max 10 :tar 5}
+         {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 2 :max 10 :tar 5}
   
-        {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 3 :max 5 :tar 3}
+         {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 3 :max 5 :tar 3}
   
-        {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 4 :max 15 :tar 12}]
+         {:state [8 8 1 1 8] :control (vec (repeat 6 0)) :id 4 :max 15 :tar 12}]
         
         u (control-step as (:control (first as)) step-size)]
     
