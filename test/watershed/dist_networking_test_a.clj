@@ -6,7 +6,7 @@
             [manifold.deferred :as d]
             [watershed.core :as w]
             [net.aqueduct :as a]
-            [net.physicloud :as phy]
+            [net.networking :as net]
             [net.faucet :as f]
             [clojure.pprint :as p]
             [manifold.stream :as s]))
@@ -15,7 +15,7 @@
   
   (-> 
     
-    @(phy/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} :provides [:cpu-1-data] :requires [:cpu-2-data])
+    @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} :provides [:cpu-1-data] :requires [:cpu-2-data])
     
     (w/add-river (w/estuary :test [:cpu-2-data] (fn [stream] (s/consume println stream))))
     
