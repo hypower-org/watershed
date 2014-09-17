@@ -8,7 +8,36 @@
             [net.aqueduct :as a]
             [net.faucet :as f]
             [clojure.pprint :as p]
+            [watershed.graph :as gr]
+            [net.geyser :as g]
+            [watershed.utils :as u]
             [manifold.stream :as s]))
+
+;Move this to some sort of stream utils...
+
+(defn selector 
+  
+  [f stream] 
+  
+  (let [s (s/map identity stream)
+             
+        output (s/stream)] 
+         
+         (d/loop 
+           
+           [v (s/take! s)]
+           
+           (d/chain v (fn [x] (if (s/closed? output) 
+                                
+                                (s/close! s) 
+                                
+                                (let [result (f x)]
+                                  
+                                  (if result (s/put! output result)) 
+                                
+                                  (d/recur (s/take! s)))))))
+         
+         output))
   
 (defn elect-leader 
   
@@ -18,9 +47,9 @@
         
         g @(-> 
         
-        (g/geyser port (gloss/string :utf-8))
+             (g/geyser port (gloss/string :utf-8))
             
-        w/flow)       
+             w/flow)       
         
        watershed 
 
@@ -66,45 +95,27 @@
   
   (keyword (str append (name k))))
 
-(defn- generate-system 
-  
-  "Generates a physicloud framework for a given network topology.  Expects a graph in the form of 
-   
-   {:CPU-1 [CPU-2] :CPU-2 [CPU-3] :CPU-3 []}"
-  
-  [aqueduct graph] 
-  
-  (let [agents (keys graph)
-        
-        system (w/watershed)
-        
-        server (:aqueduct aqueduct)]
-    
-    ;Attach agents to each other 
-    
-    (reduce (fn [x y] (w/add-river x y)) system (mapcat (fn [x] [(w/source (make-key "sink-" x) (fn [] (s/map (fn [y] (str {x y})) (:sink (x server)))))
-                                                
-                                                                 (w/estuary (make-key "source-" x) (mapv #(make-key "sink-" %) (x graph)) (fn [& streams] (doall (map #(s/connect % (:source (x server))) streams))))]) agents))))
-
 (defn monitor 
   
   [graph & {:keys [port] :or {port 10000}}] 
   
-  (let [agents (keys graph)        
+  (let [graph (gr/transpose graph)
+        
+        agents (keys graph)        
         
         aqueduct (a/aqueduct (vec (keys graph)) port (gloss/string :utf-8 :delimiters ["\r\n"]))]
     
     (d/let-flow [server (w/flow aqueduct)]   
       
       (let [aq (:aqueduct aqueduct)]
-      
-        (generate-system aqueduct graph)
         
         (->
     
-          (reduce (fn [x y] (w/add-river x y)) (w/watershed) (mapcat (fn [x] [(w/source (make-key "sink-" x) (fn [] (s/map (fn [y] (str {x y})) (:sink (x aq)))))
+          (reduce (fn [x y] (w/add-river x y)) (w/watershed) (mapcat (fn [x] [(w/source (make-key "sink-" x) (fn [] (:sink (x aq))))
                                                 
-                                                                     (w/estuary (make-key "source-" x) (mapv #(make-key "sink-" %) (x graph)) (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams))))]) agents))
+                                                                              (w/estuary (make-key "source-" x) (mapv #(make-key "sink-" %) (:edges (x graph))) 
+                                                                                         
+                                                                                         (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams))))]) agents))
         
           w/flow)
         
@@ -112,14 +123,35 @@
     
 (defn cpu 
   
-  [ip graph] 
+  [ip graph & {:keys [port requires provides] :or {port 10000 requires [] provides []}}] 
   
-  (if (= (elect-leader) ip)
+  (let [chosen (elect-leader)]
     
-      (monitor graph))
+    (println chosen)
   
-  (w/flow (f/faucet ip "10.10.10.5" 10000 (gloss/string :utf-8 :delimiters ["\r\n"]))))
+    (if (= chosen ip)
+    
+        (monitor graph))
   
+    (d/let-flow [faucet (w/flow (f/faucet ip (name chosen) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
+      
+      (->
+      
+        (reduce (fn [w r] (w/add-river w r)) 
+              
+                (w/watershed) 
+              
+                (map (fn [x] (w/source x (fn [] (selector (fn [y] (x (read-string y))) (:sink faucet))))) requires))
+        
+                  
+        (#(reduce (fn [w r] (w/add-river w r)) % 
+                  
+                  (map (fn [x] (w/estuary (make-key "providing-" x) [x] 
+                                         
+                                          (fn [stream] (s/connect (s/map (fn [data] (str {x data})) stream) (:source faucet))))) provides))))           
+      
+        )))
+
   
   
 

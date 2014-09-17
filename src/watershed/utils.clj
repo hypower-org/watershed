@@ -16,3 +16,4 @@
   (let [^String result (filter identity (map (comp last #(if % (clojure.string/split % #"\s+")) #(re-matches #"CPU.*\d" %)) (clojure.string/split (:out (sh "lscpu")) #"\n")))]
     
     (* (read-string (first result)) (read-string (last result)))))
+
