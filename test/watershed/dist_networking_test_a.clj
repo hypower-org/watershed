@@ -11,7 +11,9 @@
             [clojure.pprint :as p]
             [manifold.stream :as s]))
 
-(def cpu 
+(defn start 
+  
+  []
   
   (-> 
     
@@ -22,6 +24,7 @@
     (w/add-river (w/source :cpu-1-data (fn [] (s/periodically 1000 (fn [] :cpu-1!)))))
                                                           
     w/flow))
+
   
   
   

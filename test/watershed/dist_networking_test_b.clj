@@ -11,7 +11,9 @@
             [clojure.pprint :as p]
             [manifold.stream :as s]))
 
-(def cpu 
+(defn start 
+  
+  []
   
   (-> 
     
