@@ -133,7 +133,7 @@
                   (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source}}
 
                                    {(make-key "source-" x) {:tributaries (mapv #(make-key "sink-" %) (:edges (x graph))) 
-                                                            :sieve (fn [& streams] (println "STUFF: " streams) (doall (map #(s/connect % (:source (x aq))) streams)))
+                                                            :sieve (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams)))
                                                             :type :estuary}}]) 
                                         
                           agents))
@@ -163,8 +163,7 @@
                        {x {:tributaries [] :sieve (fn [] (selector (fn [y] (x (read-string y))) (:sink faucet)))
                            :type :source }}) 
                     
-                     requires))
-        
+                     requires))       
                   
         (#(reduce merge % 
                   
