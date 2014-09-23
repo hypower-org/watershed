@@ -5,7 +5,6 @@
   (:require [manifold.stream :as s]
             [manifold.deferred :as d]
             [clojure.pprint :as p]
-            [clojure.data.generators :as rand]
             [clojure.zip :as z]))
 
 (defn periodical
