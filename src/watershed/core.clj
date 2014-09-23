@@ -49,6 +49,8 @@
 ;(defmacro apply-macro [macro args]
 ;   `(apply (functionize ~macro) ~args))
 
+;apply-template might be useful!
+
 (defn- emit-flow
   [sieve streams]   
   (reify ITide     
