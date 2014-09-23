@@ -66,20 +66,29 @@
              w/flow)       
         
         watershed (-> 
-  
-                    (w/watershed)
-  
-                    (w/add-river (w/source :broadcast (fn [] (s/periodically interval (fn [] {:host "10.10.10.255" :port port :message (str (u/cpu-units))})))))
-  
-                    (w/add-river (w/river :geyser [:broadcast] (fn [x] (s/connect x (:source g)) (s/map (fn [y] {(keyword (:host y)) y}) (:sink g)))))
-  
-                    (w/add-river (w/estuary :result [:geyser] (fn [x] (s/reduce merge (s/map identity x)))))             
-           
-                    (w/add-river (w/eddy :accumulator [:accumulator :geyser] (fn [& streams] (s/map acc-fn (apply s/zip streams))) {}))
-           
-                    (w/add-river (w/dam :watch [:accumulator] (fn [w stream] (s/consume #(watch-fn w % neighbors) stream))))
+                    
+                    {:broadcast {:tributaries [] 
+                                 :sieve (fn [] (s/periodically interval (fn [] {:host "10.10.10.255" :port port :message (str (u/cpu-units))})))
+                                 :type :source}
+                     
+                    :geyser {:tributaries [:broadcast] 
+                             :sieve (fn [x] (s/connect x (:source g)) (s/map (fn [y] {(keyword (:host y)) y}) (:sink g)))
+                             :type :river}                   
+                    
+                    :result {:tributaries [:geyser] 
+                             :sieve (fn [x] (s/reduce merge (s/map identity x)))
+                             :type :estuary}
+                    
+                    :accumulator {:tributaries [:accumulator :geyser] 
+                                  :sieve (fn [& streams] (s/map acc-fn (apply s/zip streams)))
+                                  :initial {}
+                                  :type :river}
+                    
+                    :watch {:tributaries [:accumulator] 
+                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) stream))                           
+                            :type :dam}}         
                                                                     
-                    w/flow)]
+                    (w/compile*))]
     
     (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
@@ -119,15 +128,17 @@
         
         (->
     
-          (reduce (fn [x y] (w/add-river x y)) (w/watershed) (mapcat (fn [x] [(w/source (make-key "sink-" x) (fn [] (:sink (x aq))))
-                                                
-                                                                              (w/estuary (make-key "source-" x) (mapv #(make-key "sink-" %) (:edges (x graph))) 
-                                                                                         
-                                                                                         (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams))))]) agents))
+          (reduce merge
+                  
+                  (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source}}
+
+                                   {(make-key "source-" x) {:tributaries (mapv #(make-key "sink-" %) (:edges (x graph))) 
+                                                            :sieve (fn [& streams] (println "STUFF: " streams) (doall (map #(s/connect % (:source (x aq))) streams)))
+                                                            :type :estuary}}]) 
+                                        
+                          agents))
         
-          w/flow)
-        
-        ))))
+          w/compile*)))))
     
 (defn cpu 
   
@@ -145,20 +156,24 @@
       
       (->
       
-        (reduce (fn [w r] (w/add-river w r)) 
+        (reduce merge               
               
-                (w/watershed) 
-              
-                (map (fn [x] (w/source x (fn [] (selector (fn [y] (x (read-string y))) (:sink faucet))))) requires))
+                (map (fn [x] 
+                       
+                       {x {:tributaries [] :sieve (fn [] (selector (fn [y] (x (read-string y))) (:sink faucet)))
+                           :type :source }}) 
+                    
+                     requires))
         
                   
-        (#(reduce (fn [w r] (w/add-river w r)) % 
+        (#(reduce merge % 
                   
-                  (map (fn [x] (w/estuary (make-key "providing-" x) [x] 
-                                         
-                                          (fn [stream] (s/connect (s/map (fn [data] (str {x data})) stream) (:source faucet))))) provides))))           
-      
-        )))
+                  (map (fn [x] 
+                         
+                         {(make-key "providing-" x) {:tributaries [x] 
+                                                     :sieve (fn [stream] (s/connect (s/map (fn [data] (str {x data})) stream) (:source faucet)))
+                                                     :type :estuary}}) 
+                       provides)))))))
 
   
   

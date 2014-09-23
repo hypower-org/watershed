@@ -11,25 +11,17 @@
 
 (w/flow g)
 
-(def watershed 
+(def outline 
+  
+  {:broadcast {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] {:host "10.10.10.255" :port 8999 :message (str (u/cpu-units))})))               
+            :type :source}
 
-  (-> 
-  
-    (w/watershed)
-  
-    (w/add-river (w/source :broadcast  
-                           
-                           (fn [] (s/periodically 1000 (fn [] {:host "10.10.10.255" :port 8999 :message (str (u/cpu-units))})))))
-  
-    (w/add-river (w/river :geyser [:broadcast] 
-                          
-                          (fn [x] (s/connect (first x) (:source g)) (s/map (fn [x] {(keyword (:host x)) x}) (:sink g)))))
-  
-    (w/add-river (w/estuary :result [:geyser] 
-                            
-                            (fn [x] (s/reduce merge (first x)))))
-    
-    w/flow)) 
+   :geyser {:tributaries [:broadcast] :sieve (fn [x] (s/connect (first x) (:source g)) (s/map (fn [x] {(keyword (:host x)) x}) (:sink g)))
+            :type :river}   
+   
+   :result {:tributaries [:geyser] :sieve (fn [x] (s/reduce merge (s/map identity (first x))))}})
+
+(def test-system (w/compile* outline))
 
 ;(def result (w/ebb watershed))
 

@@ -1,338 +1,296 @@
 (ns watershed.core
-  (:use [clojure.pprint])
-  (:require [manifold.deferred :as d]
+  (:require [clojure.pprint :as p]    
+            [manifold.deferred :as d]
             [watershed.graph :as g]
             [manifold.stream :as s]
             [lamina.core :as l]))
 
-(declare compile*)
+(set! *warn-on-reflection* true)
 
 (defprotocol ITide
   (flow [_])
   (ebb [_]))
 
-(defn dependents
-  [system title]
+(defprotocol IWatershed
+  (supply-graph [_])
+  (dependents [_ title]))
 
-  (reduce-kv (fn [coll k v] 
-               
-               (if (some #{title} (:tributaries v)) (conj coll k) coll)) '() system))
-
-(defn- contains-many?
-  [coll query-coll]
-
-  (every? (fn [x] (some (fn [y] (= y x)) coll)) query-coll))
-
-(defn start-order
-  [state & {:keys [active]}] 
+(defrecord River [tide title tributaries output]
   
-  (letfn [(helper 
-            [state current-order]
-            (if (empty? state)
-              current-order
-              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (contains-many? current-order z) (contains-many? active z)) (conj x y) x)) [] state)]
-                (recur (reduce dissoc state possible)
-                       (reduce conj current-order possible)))))]
-    
-    (reverse (helper state nil))))
-
-(defrecord River [title tributaries output sieve on-ebbed]
-
   ITide
-
-  (flow
-   [_])
-
-  (ebb
-   [_]
-
-   (if (not= output ::not-started)
-     (s/close! output))
-
-   (if on-ebbed
-      (on-ebbed))))
-
-(defrecord Source [title output sieve on-ebbed]
   
-  ITide 
+  ;Should probably take this out...
+  (flow [_]    
+    (flow ^ITide tide)) 
   
-  (flow 
-    [_])
+  (ebb [_]    
+    (ebb ^ITide tide)))
+
+(defmethod print-method River [^River o ^java.io.Writer w]
+      
+  (.write w
+      
+    (let [tributaries (:tributaries o)]
+      
+      ;Make sure this works properly...might have to remove nils in string
+      
+      (str 
+        (if (empty? tributaries)
+          ""
+          (str "|" (.tributaries o) "| ->"))
+        
+        " " (.title o) 
+        
+        (str " -> " (pr-str (.output o)))))))
+
+;(defmacro functionize [macro]
+;  `(fn [& args#] (eval (cons '~macro args#))))
+;
+;(defmacro apply-macro [macro args]
+;   `(apply (functionize ~macro) ~args))
+
+(defn- emit-flow
+  [sieve streams]   
+  (reify ITide     
+    (flow 
+      [_]       
+      (apply sieve streams))))
+
+(defn- emit-ebb 
+  [output on-ebbed] 
+  (reify ITide 
+    (ebb 
+      [_] 
+      (if on-ebbed 
+        (on-ebbed))      
+      (if (s/stream? output) 
+        (s/close! output)
+        output))))
+
+(defn river 
+  [title tributaries sieve streams on-ebbed] 
   
-  (ebb 
-    [_]
+  (let [f (emit-flow sieve streams)
+      
+        output (flow f)
+        
+        e (emit-ebb output on-ebbed)]  
     
-    (if (not= output ::not-started)
-      (s/close! output))
-    
-    (if on-ebbed
-      (on-ebbed))))
+    (River. (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
 
-(defrecord Estuary [title tributaries output sieve on-ebbed]
+(defn dam 
+  [watershed title tributaries sieve streams] 
   
-  ITide 
-  
-  (flow 
-    [_])
-  
-  (ebb 
-    [_]
+  (let [f (emit-flow (fn [& args] (apply sieve (cons watershed args))) streams)
+      
+        output (flow f)
+        
+        e (emit-ebb output nil)]  
     
-    (if on-ebbed
-      (on-ebbed))))
+    (->River (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
+            
+;BEING DEVELOPED!
 
-(defrecord Eddy [title tributaries output sieve on-ebbed initial]
+(defrecord Watershed [watershed] 
   
-  ITide 
-  
-  (flow 
-    [_])
-  
-  (ebb 
-    [_]
-    
-    (if (not= output ::not-started)
-      (s/close! output))
-    
-    (if on-ebbed
-      (on-ebbed))))
-
-(defrecord Dam [title tributaries sieve] 
-  
-  ITide 
+  ITide
   
   (flow [_])
   
-  (ebb [_]))
-
-(defn start-in-order
+  (ebb [_]              
+    (let [ks (vec (keys watershed))]        
+      (reduce-kv         
+        (fn [m i v]          
+          (let [ret (ebb v)] 
+            (if ret 
+              (assoc m (ks i) ret)
+              m)))     
+        {}        
+        (vec (vals watershed)))))
   
-  [system started] 
-
-  (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) :active (keys started))
-        
-        tributaries (mapv (comp :tributaries system) order)] 
-
-    (reduce-kv (fn [started cardinal cur]                        
-               
-                 (let [r (cur system)]                                     
-                   
-                   (assoc started cur (cond 
-                                                                              
-                                        (= (type r) watershed.core.Source)
-                     
-                                        ((:sieve r))
-                                                                              
-                                        :else
-               
-                                        (apply (:sieve r) (map started (tributaries cardinal)))))))
-             
-               started
-                           
-               (vec order))))
-
-(defprotocol IWatershed
-  (add-river [_ river])
-  (ebb-river [_ title])
-  (supply-graph [_]))
-
-(defrecord Watershed [system]
-
   IWatershed
-  
+    
   (supply-graph 
     [_] 
     
-    (apply merge (map (fn [x] {x {:edges (dependents system x)}}) (keys system))))
-
-  (add-river
-
-   [_ river]
-
-   (assoc-in _ [:system (:title river)] river))
-
-  (ebb-river
-   [_ title]
-
-   @(l/run-pipeline
-
-     title
-
-     (fn
-       [x]
-
-       (loop [ebbed #{}
-
-              to-ebb (dependents system x)]
-
-         (if (empty? to-ebb)
-           
-           (conj ebbed title)
-
-           (recur (clojure.set/union ebbed (set to-ebb)) (mapcat (fn [x] (dependents system x)) to-ebb)))))
-
-     (fn [x]
-       
-       (remove nil? (map (fn [y] (ebb (y system)) (let [riv (y system)] (if (= (type riv) watershed.core.Estuary) {y (:output riv)}))) x)))))
-
-  ITide
-
-  (flow
-    [_]
+    (apply merge (map (fn [x] {x {:edges (dependents _ x)}}) (keys watershed))))
+  
+  (dependents 
+    [_ title] 
     
-    (compile* _))
-
-  (ebb [_]
-                 
-    (apply merge (remove nil? (map (fn [y] (ebb (y system)) (let [riv (y system)] (if (= (type riv) watershed.core.Estuary) {y (:output riv)}))) (keys system))))))
-
-(defn watershed []
-  (->Watershed {}))
-
-(defn river 
+    (reduce-kv (fn [coll k v] 
+               
+                 (if (some #{title} (:tributaries v)) (cons coll k) coll)) '() watershed)))
   
-  [title tributaries sieve & {:keys [on-ebbed initial]}]    
-    
-  (->River title tributaries ::not-started sieve on-ebbed))
-
-(defn source 
-
-  [title sieve & {:keys [on-ebbed]}]
-    
-  (->Source title ::not-started sieve on-ebbed))
-
-(defn estuary 
-
-  [title tributaries sieve & {:keys [on-ebbed]}]
+(defn watershed 
+  [system] 
+  (->Watershed system))
+ 
+(defn- start-order
+ [state active] 
+ (letfn [(helper 
+           [state current-order]
+           (if (empty? state)
+             current-order
+             (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set current-order) z) (every? (set active) z)) (conj x y) x)) [] state)]
+               (recur (reduce dissoc state possible)
+                      (reduce conj current-order possible)))))]    
+   (reverse (helper state nil))))
+ 
+(defn start-in-order
   
-    (->Estuary title tributaries ::not-started sieve on-ebbed))
+ [system started] 
 
-(defn eddy 
+ (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) (keys started))
+        
+       tributaries (mapv (comp :tributaries system) order)] 
 
-  [title tributaries sieve initial & {:keys [on-ebbed]}]
-  
-    (->Eddy title tributaries ::not-started sieve on-ebbed initial))
-
-(defn dam 
-  [title tributaries sieve] 
-  
-  (->Dam title tributaries sieve))
-
+   (reduce-kv (fn [started cardinal cur]                        
+               
+                (let [r (cur system)]                                     
+                   
+                  (assoc started cur (river cur (:tributaries r) (:sieve r) (map (comp :output started) (tributaries cardinal)) (:on-ebbed r)))))
+             
+              started
+                           
+              (vec order))))
+ 
+(defn- dependents* 
+  [system title] 
+  (reduce-kv      
+    (fn [coll k v]              
+      (if (some #{title} (:tributaries v)) (cons k coll) coll)) '() system))
+ 
 (defn compile*
   
-  [^Watershed watershed] 
+ [system] 
     
-  (let [system (:system watershed)
-        
-        dams (reduce-kv (fn [coll k v] 
+ (let [dams (reduce-kv (fn [coll k v] 
                    
-                          (if (= (type v) watershed.core.Dam)
+                         (if (= (:type v) :dam)
                      
-                            (conj coll k)
+                           (conj coll k)
                      
-                            coll))
+                           coll))
                  
-                        [] system)
+                       [] system)
         
-        possibly-cyclic (reduce-kv (fn [sys k v]  
+       possibly-cyclic (reduce-kv (fn [sys k v]  
                                      
-                                     (let [t (type v)]
+                                    (let [t (:type v)]
                                      
-                                       (if (not (or (= t watershed.core.Estuary) (= t watershed.core.Source)))                                  
+                                      (if (not (or (= t :estuary) (= t :source)))                                  
                                        
-                                         (assoc sys k v) 
+                                        (assoc sys k v) 
                                          
-                                         sys)))                                 
+                                        sys)))                                 
                                    
-                                   {} (reduce dissoc system dams))
+                                  {} (reduce dissoc system dams))
         
-        cycles-handled (some->>                      
+       cycles-handled (->>                      
                            
-                         (let [graph (apply merge (map (fn [x] {x {:edges (dependents possibly-cyclic x)}}) (keys possibly-cyclic)))]
+                        (let [graph (apply merge (map (fn [x] {x {:edges (dependents* system x)}}) (keys possibly-cyclic)))]
 
-                           (g/strongly-connected-components graph
+                          (g/strongly-connected-components graph
 
-                                                            (g/transpose graph)))      
+                                                           (g/transpose graph)))      
                                                 
-                         ;Remove singularities with no self-cyclic dependency
+                        ;Remove singularities with no self-cyclic dependency
                             
-                         (remove      
+                        (remove      
                              
-                             (fn [x] 
+                            (fn [x] 
         
-                               (if (= (count x) 1)
+                              (if (= (count x) 1)
           
-                                 (let [val (first x)] 
+                                (let [val (first x)] 
                                 
-                                   (not (val (set (:tributaries (val possibly-cyclic)))))))))
+                                  (not (val (set (:tributaries (val possibly-cyclic)))))))))
       
-                         flatten
+                        flatten
                          
-                         ;pre-allocate streams for nodes with cyclic dependencie(s)
+                        ;pre-allocate streams for nodes with cyclic dependencies
                         
-                         (map 
+                        (map 
       
-                           (fn [cyclic] 
+                          (fn [cyclic] 
                                    
-                             (let [val (cyclic system)
+                            (let [val (cyclic system)
                                   
-                                   input (repeatedly (count (:tributaries val)) s/stream)
-                                  
-                                   output (s/stream)]
-                              
-                               (s/connect (apply (:sieve val) input) output)         
+                                  input (repeatedly (count (:tributaries val)) s/stream)
+                                   
+                                  output (s/stream)
+                                   
+                                  river (river cyclic (:tributaries val) (:sieve val) input (:on-ebbed val))]    
+                               
+                              (s/connect (:output river) output)
         
-                               {cyclic {:input input :output output}})))                        
+                              {cyclic {:input input :river (assoc river :output output)}})))                        
       
-                         (apply merge))
+                        (apply merge))
         
-        system-connected (start-in-order (reduce dissoc system (concat (keys cycles-handled) dams))
+       system-connected (start-in-order (reduce dissoc system (concat (keys cycles-handled) dams))
     
-                                 (zipmap (keys cycles-handled) (map :output (vals cycles-handled))))]
+                                (zipmap (keys cycles-handled) (map :river (vals cycles-handled))))]
     
-    ;connect cyclic elements to non-cyclic elements
+   ;connect cyclic elements to non-cyclic elements
     
-    (doall (map (fn [cyclic] 
+   (doall (map (fn [cyclic] 
            
-                  (doall (map (fn [x y] (s/connect x y)) (map system-connected (:tributaries (cyclic system))) (:input (cyclic cycles-handled)))))
+                 (doall (map (fn [x y] (s/connect x y)) (map (comp :output system-connected) (:tributaries (cyclic system))) (:input (cyclic cycles-handled)))))
              
-                (keys cycles-handled)))
+               (keys cycles-handled)))
     
-    ;associate started rivers into watershed and attach dams!
+   ;associate started rivers into watershed and attach dams!
+    
+   (let [watershed (reduce-kv           
+                     ;watershed cardinal dam 
+                     (fn [w i d]     
+                       (let [ts (:tributaries d)
+                             title (dams i)]
+                         (assoc-in
+                           w [:watershed title]                      
+                           (dam w title ts (:sieve d) (map (comp :output system-connected) ts)))))         
+                     (watershed system-connected)                          
+                     (mapv system dams))]
       
-    (let [watershed (reduce           
-          
-                      (fn [x [k v]] (assoc-in x [:system k :output] v)) 
-           
-                      watershed system-connected)]
+     (doseq [c (keys cycles-handled)] 
       
-      (doseq [dam (map system dams)]
-
-        (apply (:sieve dam) (cons watershed (map system-connected (:tributaries dam)))))
-        
-      (doseq [c (keys cycles-handled)] 
-      
-        ;Get the system rolling...could probably do this more effectively.  For right now, just put initial values into cycles
+       ;Get the system rolling...could probably do this more effectively.  For right now, just put initial values into cycles
 		      
-        (if-let [initial-value (:initial (c system))]
+       (if-let [initial-value (:initial (c system))]
       
-          (s/put! (:output (c cycles-handled)) initial-value)))
+         (s/put! (:output (c system-connected)) initial-value)))
      
-      watershed)))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+     watershed)))
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+        
+         
+         
+           
+           
+           
+           
+           
+           
+               
