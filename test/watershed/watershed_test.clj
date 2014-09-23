@@ -4,6 +4,8 @@
         [clojure.set])
   (:require [manifold.stream :as s]
             [manifold.deferred :as d]
+            [clojure.pprint :as p]
+            [clojure.data.generators :as rand]
             [clojure.zip :as z]))
 
 (defn periodical
@@ -33,7 +35,61 @@
     (println "DONE!")
     (ebb w)))
 
-(def outline 
+(def ^:private river-sieves 
+  [(fn [& streams] (s/map identity (apply s/zip streams)))])
+
+(def ^:private estuary-sieves 
+  [(fn [& streams] (s/reduce concat (apply s/zip streams)))])
+
+(def ^:private source-sieves 
+  [(fn [] (s/periodically 1000 (fn [] (rand-int 30))))])
+
+(defn gen-titles 
+  [n size] 
+  (set (mapv (comp keyword str) (range n))))
+  
+(defn gen-type 
+  [] 
+  ([:river :estuary :source] (rand-int 3)))
+
+(defn gen-river 
+  [type title titles] 
+  
+  (case type 
+    
+    :river 
+    
+    {title {:tributaries (vec (distinct (repeatedly (+ (rand-int (count titles)) 1) (fn [] (rand-nth (seq (disj titles title)))))))
+            :sieve (rand-nth river-sieves)
+            :initial (rand-int 30)
+            :type :river}}
+    
+    :estuary      
+      
+    {title {:tributaries (vec (distinct (repeatedly (+ (rand-int (count titles)) 1) (fn [] (rand-nth (seq (disj titles title)))))))
+             :sieve (rand-nth estuary-sieves)
+             :type :estuary}}
+      
+    :source
+      
+    {title {:tributaries []
+             :sieve (rand-nth source-sieves)
+             :type :source}}))
+
+(defn gen-outline 
+  [n] 
+  
+  (let [titles (gen-titles n n)
+        
+        types-assigned (zipmap titles (repeatedly gen-type))
+        
+        possible-sources (apply disj titles (filter (fn [x] (= (x types-assigned) :estuary)) titles))]        
+    
+    (apply merge (map (fn [[k v]] (gen-river v k possible-sources)) types-assigned))))
+
+;Hand made outline
+
+(def easy-outline 
   
   {:a {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] 1))) :type :source} 
    
@@ -49,11 +105,20 @@
    
    })
 
-(def test-system (compile* outline))
+;Randomly generated!
 
-test-system
+(def outline 
+  (gen-outline 10))
+
+(def test-system 
   
-(ebb test-system)
+  (-> 
+    
+    outline
+    
+    compile*))
+  
+;(ebb test-system)
 
 
 

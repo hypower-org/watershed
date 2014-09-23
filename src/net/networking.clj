@@ -128,7 +128,7 @@
         
         (->
     
-          (reduce merge
+          (apply merge
                   
                   (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source}}
 
@@ -156,7 +156,7 @@
       
       (->
       
-        (reduce merge               
+        (apply merge               
               
                 (map (fn [x] 
                        
@@ -165,7 +165,7 @@
                     
                      requires))       
                   
-        (#(reduce merge % 
+        (#(apply merge % 
                   
                   (map (fn [x] 
                          

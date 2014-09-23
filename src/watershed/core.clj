@@ -128,11 +128,22 @@
  
 (defn- start-order
  [state active] 
+ 
+ ;(println "START ORDER") 
+ 
+ ;(p/pprint state)
+ 
+; (let [graph (zipmap (keys state) (map (fn [x] {:edges x}) (vals state)))] 
+;   
+;   (println "ACTIVE: " active)
+;   (println (g/strongly-connected-components graph (g/transpose graph))))
+ 
  (letfn [(helper 
            [state current-order]
+           ;(println "HELPER: " (keys state) current-order)
            (if (empty? state)
              current-order
-             (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set current-order) z) (every? (set active) z)) (conj x y) x)) [] state)]
+             (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set (concat current-order active)) z)) (conj x y) x)) [] state)]
                (recur (reduce dissoc state possible)
                       (reduce conj current-order possible)))))]    
    (reverse (helper state nil))))
@@ -140,10 +151,20 @@
 (defn start-in-order
   
  [system started] 
+ 
+ ;(p/pprint system) 
+ 
+ ;(p/pprint started)
 
  (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) (keys started))
         
        tributaries (mapv (comp :tributaries system) order)] 
+   
+   ;(p/pprint system) 
+   
+   ;(println order)
+   
+   ;(println tributaries)
 
    (reduce-kv (fn [started cardinal cur]                        
                

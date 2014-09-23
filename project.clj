@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [lamina "0.5.5-SNAPSHOT"]     
                  [incanter "1.5.5"]
+                 [org.clojure/data.generators "0.1.2"]
                  [net.mikera/core.matrix "0.29.1"]
                  [manifold "0.1.0-alpha3"]
                  [aleph "0.3.3"]])
