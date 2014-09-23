@@ -21,45 +21,39 @@
 
         (s/map (fn [x] (if-not (some nil? x) (fnc x))) (s/periodically period (fn [] @val)))))))
 
-(def test-fn (fn [& x] (periodical x 1000 identity)))
+(defn cyclic-fn 
+  [[[a b] c]] 
+  [a c])
+ 
+(defn dam-fn 
+  [w [a b]]
+  (println w)
+  (println "dam: " a b)
+  (when (= b 1)
+    (println "DONE!")
+    (ebb w)))
 
-(defn watch 
-  [watershed [num]]
+(def outline 
   
-  (if (= num 3)
-    (ebb watershed)))
+  {:a {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] 1))) :type :source} 
+   
+   :b {:tributaries [:b :a] :sieve (fn [& streams] (s/map cyclic-fn (apply s/zip streams))) :type :river
+       
+       :initial [1 2]} 
+   
+   :c {:tributaries [:b] :sieve (fn [x] (s/consume println x)) :type :estuary}
+   
+   :watch {:tributaries [:b] :sieve (fn [w b] (s/consume #(dam-fn w %) b)) :type :dam}
+  
+   :d {:tributaries [:b] :sieve (fn [x] (s/reduce concat (s/map identity x))) :type :estuary}
+   
+   })
 
-(def test-system (->
+(def test-system (compile* outline))
 
-                   (watershed)
-
-                   (add-river (source :reef (fn [] (periodical [] 1000 (fn [] {:hi 1}))) :on-ebbed (fn [] (println "reef removed :("))))
-                 
-                   (add-river (eddy :coral [:reef :stream]
-                                  
-                                    (fn [reef stream]                                    
-                                    
-                                      (s/map (fn [x] (first x)) stream))                                              
-                                  
-                                    [2] :on-ebbed (fn [] (println "coral removed :("))))
-                 
-                   (add-river (eddy :stream [:coral] test-fn [3] :on-ebbed (fn [] (println "stream removed :("))))
-                 
-                   (add-river (estuary :creek [:stream] (fn [x] 
-                                                                                                               
-                                                          (s/consume println x) 
-                                                        
-                                                          (d/deferred)) :on-ebbed (fn [] (println "creek removed :("))))
-                   
-                   (add-river (dam :end [:stream] (fn [watershed & x] (s/map (fn [y] (watch watershed y)) (first x)))))))
-
-;(def g (reduce merge (map (fn [x] {x {:edges (dependents (:system test-system) x)}}) (keys (:system test-system)))))
-
-;(def gt (zipmap (keys (:system test-system)) (map (fn [x] {:edges (:tributaries x)}) (vals (:system test-system)))))
-
-;(def result (cycles g gt))
-
-(def s (flow test-system))
+test-system
+  
+(ebb test-system)
 
 
 
