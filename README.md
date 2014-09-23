@@ -110,6 +110,8 @@ After a watershed has been started, 'ebb' can be used to close all of the rivers
 
 ```
 
+This work was funded by the National Science Foundation through grant CNS-1239221.
+
 
 
 
