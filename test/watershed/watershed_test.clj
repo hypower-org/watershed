@@ -35,7 +35,7 @@
     (ebb w)))
 
 (def ^:private river-sieves 
-  [(fn [& streams] (s/map identity (apply s/zip streams)))])
+  [(fn [& streams] (s/map first (apply s/zip streams)))])
 
 (def ^:private estuary-sieves 
   [(fn [& streams] (s/reduce concat (apply s/zip streams)))])
@@ -107,7 +107,7 @@
 ;Randomly generated!
 
 (def outline 
-  (gen-outline 10))
+  (gen-outline 1000))
 
 (def test-system 
   
@@ -117,7 +117,7 @@
     
     compile*))
   
-;(ebb test-system)
+(ebb test-system)
 
 
 

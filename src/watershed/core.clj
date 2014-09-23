@@ -15,7 +15,7 @@
   (supply-graph [_])
   (dependents [_ title]))
 
-(defrecord River [tide title tributaries output]
+(defrecord Waterway [tide title tributaries output]
   
   ITide
   
@@ -26,7 +26,7 @@
   (ebb [_]    
     (ebb ^ITide tide)))
 
-(defmethod print-method River [^River o ^java.io.Writer w]
+(defmethod print-method Waterway [^Waterway o ^java.io.Writer w]
       
   (.write w
       
@@ -67,7 +67,7 @@
         (s/close! output)
         output))))
 
-(defn river 
+(defn waterway 
   [title tributaries sieve streams on-ebbed] 
   
   (let [f (emit-flow sieve streams)
@@ -76,7 +76,7 @@
         
         e (emit-ebb output on-ebbed)]  
     
-    (River. (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
+    (->Waterway (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
 
 (defn dam 
   [watershed title tributaries sieve streams] 
@@ -87,7 +87,7 @@
         
         e (emit-ebb output nil)]  
     
-    (->River (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
+    (->Waterway (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
             
 ;BEING DEVELOPED!
 
@@ -170,7 +170,7 @@
                
                 (let [r (cur system)]                                     
                    
-                  (assoc started cur (river cur (:tributaries r) (:sieve r) (map (comp :output started) (tributaries cardinal)) (:on-ebbed r)))))
+                  (assoc started cur (waterway cur (:tributaries r) (:sieve r) (map (comp :output started) (tributaries cardinal)) (:on-ebbed r)))))
              
               started
                            
@@ -242,11 +242,11 @@
                                    
                                   output (s/stream)
                                    
-                                  river (river cyclic (:tributaries val) (:sieve val) input (:on-ebbed val))]    
+                                  eddy (waterway cyclic (:tributaries val) (:sieve val) input (:on-ebbed val))]    
                                
-                              (s/connect (:output river) output)
+                              (s/connect (:output eddy) output)
         
-                              {cyclic {:input input :river (assoc river :output output)}})))                        
+                              {cyclic {:input input :river (assoc eddy :output output)}})))                        
       
                         (apply merge))
         
