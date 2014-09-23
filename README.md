@@ -15,15 +15,17 @@ For example:
 
 (require '[manifold.streams :as s])
 
-(river watershed :blue-nile 
+{:blue-nile 
 
-                 [:beles] 
+  {:tributaries [:beles] 
 
-                 (fn [x] (s/map identity (apply s/zip x))))
+   :sieve (fn [x] (s/map identity (apply s/zip x)))
+             
+   :type :river}}
 
 ```
 
-In particular, the first argument is the title; the second is a vector containing the tributaries of the rivers; and the third is the sieve.  This function will receive an argument of a list of Manifold streams that represent the tributaries. They are passed to the sieve in the order specified by the tributaries argument.  For a river, this function *must* return a Manifold stream that represents the output of the river.    
+In particular, the first field is the title; the second is a vector containing the tributaries of the rivers; and the third is the sieve.  This function will receive an argument of a list of Manifold streams that represent the tributaries. They are passed to the sieve in the order specified by the tributaries argument.  For a river, this function *must* return a Manifold stream that represents the output of the river.    
 
 For convenience, there are two other types of rivers: *sources* and *estuaries*.  
 
@@ -33,24 +35,29 @@ For example:
 
 ```clojure
 
-(source watershed :beles
+{:beles
 
-                  (fn [] (s/periodically 1000 (fn [] [:water]))))
+ {:tributaries [] 
+ 
+  :sieve (fn [] (s/periodically 1000 (fn [] [:water])))
+  
+  :type :source}}
 
 ```
 
-
-Estuaries are the end of a river.  Thus, they have tributaries, but they do not have outputs.  Instead, they have an optional Manifold deferred which can contain a result.  
+Estuaries are the end of a river.  Thus, they have tributaries, but they do not have outputs.  Instead, they can return a value from their sieve which will be yielded when *ebb* is called on the watershed.
 
 For example: 
 
 ```clojure
 
-(estuary  watershed :waterfall 
+{:waterfall 
 
-                    [:blue-nile]
+  {:tributaries [:blue-nile]
           
-                    (fn [x] (s/reduce conj x)))
+   :sieve (fn [x] (s/reduce conj (s/map identity x)))
+   
+   :type :estuary}}
 
 ```
 
@@ -60,34 +67,40 @@ Each of these allow for easy composition of systems:
 
 (require '[manifold.streams :as s])
 
-(def w (-> (watershed)
+(def test-watershed 
 
-           (source :beles
+    (-> 
 
-                 (fn [] (s/periodically 1000 (fn [] [:water]))))
-        
-           (river :blue-nile 
+       {:beles
 
-                 [:beles] 
-
-                 (fn [x] (s/map identity (apply s/zip x))))
-                 
-           (estuary :waterfall 
-
-                 [:blue-nile]
+         {:tributaries [] 
+ 
+          :sieve (fn [] (s/periodically 1000 (fn [] [:water])))
+  
+          :type :source}
           
-                 (fn [x] (s/reduce conj x)))
+       :blue-nile 
+
+          {:tributaries [:beles] 
+
+          :sieve (fn [x] (s/map identity (apply s/zip x)))
+             
+          :type :river}
+                 
+        :waterfall 
+
+          {:tributaries [:blue-nile]
+          
+           :sieve (fn [x] (s/reduce conj (s/map identity x)))
+   
+           :type :estuary}}
         
-           flow))
+        compile*))
 
 ```
-Once a watershed has been created, it can be started with 'flow'.  Flow connects all of the rivers in the watershed via the supplied tributaries.  
+Once a watershed has been created, it can be started with 'compile*', which connects all of the rivers in the watershed via the supplied tributaries.  This name is tentative.
 
-It is important to note that the output of each river will not be realized until the watershed has been started.  Until then, its output will be marked as ':not-started'.  
-
-Right now, this "run-time" allocation of dependencies eliminates the possibility of cycles ocurring in the Watershed.  Forthcoming improvments will alleviate this issue.  
-
-After a watershed has been started, 'ebb' can be used to close all of the rivers.  Calling ebb will return a map of estuaries to resulting deferreds.  
+After a watershed has been started, 'ebb' can be used to close all of the rivers.  Calling ebb will return a map of estuaries to resulting values.  
 
 ```clojure
 
