@@ -96,19 +96,19 @@
     
     (ebb watershed)
     
-    ((reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
+    (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
-                                (if (> cpu-power max)       
+                               (if (> cpu-power max)       
                                
-                                  (do 
-                                    (reset! leader k)
-                                    cpu-power)
+                                 (do 
+                                   (reset! leader k)
+                                   cpu-power)
                                
-                                  max)))
+                                 max)))
                                
-                0
+               0
                                
-                @(:output (:result (:watershed watershed))))
+               @(:output (:result (:watershed watershed))))
   
     @leader))
 
