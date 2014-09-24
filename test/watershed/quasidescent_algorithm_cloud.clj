@@ -265,31 +265,30 @@
     
     (mapv (fn [x] (assoc x :control u)) as)))
 
-(defn start 
+(defn -main 
   
   []
   
   (->
 
-     @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2
+     @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.2]} :10.10.10.2 {:edges [:10.10.10.5]}} 2
                
                :provides [:cloud] :requires [:agent-one :agent-two :agent-three :agent-four :agent-five])
-  
-    (w/add-river (w/eddy :cloud [:agent-one :agent-two :agent-three :agent-four :agent-five] 
-                         
-                         (fn [& x] (s/map cloud-fn (apply s/zip x)))
-                       
-                         nil
-                         
-                         ))
+     
+     (merge {:cloud {:tributaries [:agent-one :agent-two :agent-three :agent-four :agent-five] 
+                     :sieve (fn [& x] (s/map cloud-fn (apply s/zip x)))
+                     :type :river}
+             
+             :aggregator {:tributaries [:aggregator :cloud] :sieve (fn [& x] (s/map aggregator-fn (apply s/zip x)))
+                          :initial []
+                          :type :river}
+             
+             :ui {:tributaries [:aggregator] :sieve (fn [x] (s/consume ui-fn x)) 
+                  :type :estuary}
+             
+             })
     
-    ;(w/add-river (w/eddy :aggregator [:aggregator :cloud] (fn [& x] (s/map aggregator-fn (apply s/zip x))) []))
-        
-    ;(w/add-river (w/estuary :ui [:aggregator] (fn [x] (s/consume ui-fn x))))
-    
-    w/flow
-    
-    ))
+    w/compile*))
 
 ;@current-state
 

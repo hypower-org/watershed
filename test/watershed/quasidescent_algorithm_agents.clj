@@ -266,29 +266,44 @@
     
     (mapv (fn [x] (assoc x :control u)) as)))
 
-(defn start 
+(defn -main 
   
-  []
+  [ip]
   
-  (->
+  (let [ip (keyword ip)]
+  
+    (->
     
-    @(net/cpu :10.10.10.3 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 
+      @(net/cpu ip {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 
               
-              :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :requires [:cloud])
-  
-    (w/add-river (w/eddy :agent-one [:agent-one :cloud] (fn [& x] (s/map agent-fn (apply s/zip x))) (agents 0)))
-  
-    (w/add-river (w/eddy :agent-two [:agent-two :cloud] (fn [& x] (s/map agent-fn (apply s/zip x))) (agents 1)))
-  
-    (w/add-river (w/eddy :agent-three [:agent-three :cloud] (fn [& x] (s/map agent-fn (apply s/zip x))) (agents 2)))
-  
-    (w/add-river (w/eddy :agent-four [:agent-four :cloud] (fn [& x] (s/map agent-fn (apply s/zip x))) (agents 3)))
-  
-    (w/add-river (w/eddy :agent-five [:agent-five :cloud] (fn [& x] (s/map agent-fn (apply s/zip x))) (agents 4)))
+                :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :requires [:cloud])
     
-    w/flow
+      (merge {:agent-one {:tributaries [:agent-one :cloud]
+                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
+                          :initial (agents 0)
+                          :type :river}
+     
+              :agent-two {:tributaries [:agent-one :cloud]
+                           :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
+                           :initial (agents 1)
+                           :type :river}
+     
+              :agent-three {:tributaries [:agent-one :cloud]
+                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
+                          :initial (agents 2)
+                          :type :river}
+     
+              :agent-four {:tributaries [:agent-one :cloud]
+                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
+                          :initial (agents 3)
+                          :type :river}
+     
+              :agent-five {:tributaries [:agent-one :cloud]
+                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
+                          :initial (agents 4)
+                          :type :river}})
     
-    ))
+      w/compile*)))
 
 
 

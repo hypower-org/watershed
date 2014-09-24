@@ -90,24 +90,28 @@
 
 (def easy-outline 
   
-  {:a {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] 1))) :type :source} 
+  {:a {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] 1))) 
+       :type :source} 
    
-   :b {:tributaries [:b :a] :sieve (fn [& streams] (s/map cyclic-fn (apply s/zip streams))) :type :river
+   :b {:tributaries [:b :a] :sieve (fn [& streams] (s/map cyclic-fn (apply s/zip streams))) 
+       :type :river
        
        :initial [1 2]} 
    
-   :c {:tributaries [:b] :sieve (fn [x] (s/consume println x)) :type :estuary}
+   :c {:tributaries [:b] :sieve (fn [x] (s/consume println x))
+       :type :estuary}
    
-   :watch {:tributaries [:b] :sieve (fn [w b] (s/consume #(dam-fn w %) b)) :type :dam}
+   ;:watch {:tributaries [:b] :sieve (fn [w b] (s/consume #(dam-fn w %) b)) :type :dam}
   
-   :d {:tributaries [:b] :sieve (fn [x] (s/reduce concat (s/map identity x))) :type :estuary}
+   :d {:tributaries [:b] :sieve (fn [x] (s/reduce concat (s/map identity x))) 
+       :type :estuary}
    
    })
 
 ;Randomly generated!
 
 (def outline 
-  (gen-outline 1000))
+  (gen-outline 10))
 
 (def test-system 
   

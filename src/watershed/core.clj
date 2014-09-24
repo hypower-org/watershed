@@ -19,7 +19,6 @@
   
   ITide
   
-  ;Should probably take this out...
   (flow [_]    
     (flow ^ITide tide)) 
   
@@ -32,8 +31,6 @@
       
     (let [tributaries (:tributaries o)]
       
-      ;Make sure this works properly...might have to remove nils in string
-      
       (str 
         (if (empty? tributaries)
           ""
@@ -42,14 +39,6 @@
         " " (.title o) 
         
         (str " -> " (pr-str (.output o)))))))
-
-;(defmacro functionize [macro]
-;  `(fn [& args#] (eval (cons '~macro args#))))
-;
-;(defmacro apply-macro [macro args]
-;   `(apply (functionize ~macro) ~args))
-
-;apply-template might be useful!
 
 (defn- emit-flow
   [sieve streams]   
@@ -131,18 +120,8 @@
 (defn- start-order
  [state active] 
  
- ;(println "START ORDER") 
- 
- ;(p/pprint state)
- 
-; (let [graph (zipmap (keys state) (map (fn [x] {:edges x}) (vals state)))] 
-;   
-;   (println "ACTIVE: " active)
-;   (println (g/strongly-connected-components graph (g/transpose graph))))
- 
  (letfn [(helper 
            [state current-order]
-           ;(println "HELPER: " (keys state) current-order)
            (if (empty? state)
              current-order
              (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set (concat current-order active)) z)) (conj x y) x)) [] state)]
@@ -153,20 +132,10 @@
 (defn start-in-order
   
  [system started] 
- 
- ;(p/pprint system) 
- 
- ;(p/pprint started)
 
  (let [order (start-order (zipmap (keys system) (map :tributaries (vals system))) (keys started))
         
        tributaries (mapv (comp :tributaries system) order)] 
-   
-   ;(p/pprint system) 
-   
-   ;(println order)
-   
-   ;(println tributaries)
 
    (reduce-kv (fn [started cardinal cur]                        
                
