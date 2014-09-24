@@ -92,7 +92,7 @@
                                                                     
                     (w/compile*))]
     
-    (Thread/sleep 5000) 
+    (Thread/sleep 15000) 
     
     (w/ebb watershed)
     
