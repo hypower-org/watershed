@@ -16,17 +16,18 @@
   
   []
   
-  (-> 
+  (def test-sys (-> 
     
-    @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 :provides [:cpu-1-data] :requires [:cpu-2-data])
+                  @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 :provides [:cpu-1-data] :requires [:cpu-2-data])
     
-    (merge {:test {:tributaries [:cpu-2-data] :sieve (fn [stream] (s/consume println stream))
-                   :type :estuary}
+                  (merge {:test {:tributaries [:cpu-2-data] :sieve (fn [stream] (s/consume println stream))
+                                 :type :estuary}
             
-            :cpu-1-data {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] (u/time-now))))
-                         :type :source}})
+                          :cpu-1-data {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] (u/time-now))))
+                                       :type :source}})
                                                           
-    w/compile*))
+                  w/compile*)))
+
 
   
   

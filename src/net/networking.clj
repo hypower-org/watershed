@@ -109,6 +109,8 @@
                0
                                
                @(:output (:result (:watershed watershed))))
+    
+    (println @(:output (:result (:watershed watershed))))
   
     @leader))
 
@@ -167,7 +169,7 @@
                 (map (fn [x] 
                        
                        {x {:tributaries [] :sieve (fn [] (selector (fn [y] (x (read-string y))) (:sink faucet)))
-                           :type :source }}) 
+                           :type :source}}) 
                     
                      requires))       
                   

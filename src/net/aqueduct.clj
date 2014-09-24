@@ -15,7 +15,9 @@
     ch
 
     (fn [x]
-      (let [msg (read-string x)]        
+      (let [msg (read-string x)]     
+        
+        (println "a: " msg)
              
         (s/put! (:sink (msg aqueduct)) {msg ch}))))) 
 
@@ -27,7 +29,9 @@
     
     (let [server (aleph/start-tcp-server (fn [ch client-info] (handler ch client-info aqueduct)) {:port port, :frame frame})]     
       
-      (d/let-flow [connections (apply d/zip (map s/take! (map :sink (vals aqueduct))))]        
+      (d/let-flow [connections (apply d/zip (map s/take! (map :sink (vals aqueduct))))]    
+        
+        (println "Everyone connected!")
         
         (let [streams (reduce merge connections)]           
           
