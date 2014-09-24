@@ -85,7 +85,7 @@
                                   :type :river}
                     
                     :watch {:tributaries [:accumulator] 
-                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) stream))                           
+                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
                             :type :dam}}         
                                                                     
                     (w/compile*))]
