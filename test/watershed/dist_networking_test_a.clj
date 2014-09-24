@@ -20,11 +20,13 @@
     
     @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 :provides [:cpu-1-data] :requires [:cpu-2-data])
     
-    (w/add-river (w/estuary :test [:cpu-2-data] (fn [stream] (s/consume println stream))))
-    
-    (w/add-river (w/source :cpu-1-data (fn [] (s/periodically 1000 (fn [] (u/time-now))))))
+    (merge {:test {:tributaries [:cpu-2-data] :sieve (fn [stream] (s/consume println stream))
+                   :type :estuary}
+            
+            :cpu-1-data {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] (u/time-now))))
+                         :type :source}})
                                                           
-    w/flow))
+    w/compile*))
 
   
   

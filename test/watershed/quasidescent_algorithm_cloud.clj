@@ -296,7 +296,7 @@
 
 ;(def result (w/ebb system))
 
-;(view p)
+(view p)
 
 ;result
 
