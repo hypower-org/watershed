@@ -162,6 +162,8 @@
   
     (d/let-flow [faucet (w/flow (f/faucet ip (name chosen) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
       
+      (println "cpu: " ip (name chosen))
+      
       (->
       
         (apply merge               
