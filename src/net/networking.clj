@@ -84,25 +84,31 @@
                                   :initial {}
                                   :type :river}
                     
-                    :watch {:tributaries [:accumulator] 
-                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
-                            :type :dam}}         
+;                    :watch {:tributaries [:accumulator] 
+;                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
+;                            :type :dam}
+                    
+                    }         
                                                                     
                     (w/compile*))]
     
-    (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
+    (Thread/sleep 5000) 
+    
+    (ebb watershed)
+    
+    ((reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
-                               (if (> cpu-power max)       
+                                (if (> cpu-power max)       
                                
-                                 (do 
-                                   (reset! leader k)
-                                   cpu-power)
+                                  (do 
+                                    (reset! leader k)
+                                    cpu-power)
                                
-                                 max)))
+                                  max)))
                                
-               0
+                0
                                
-               @(:output (:result (:watershed watershed))))
+                @(:output (:result (:watershed watershed))))
   
     @leader))
 
