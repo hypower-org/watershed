@@ -94,7 +94,7 @@
     
     (Thread/sleep 5000) 
     
-    (ebb watershed)
+    (w/ebb watershed)
     
     (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
