@@ -109,8 +109,6 @@
                0
                                
                @(:output (:result (:watershed watershed))))
-    
-    (println @(:output (:result (:watershed watershed))))
   
     @leader))
 
@@ -153,16 +151,12 @@
   [ip graph neighbors & {:keys [port requires provides] :or {port 10000 requires [] provides []}}] 
   
   (let [chosen (elect-leader neighbors)]
-    
-    (println chosen)
   
     (if (= chosen ip)
     
         (monitor graph))
   
     (d/let-flow [faucet (w/flow (f/faucet ip (name chosen) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
-      
-      (println "cpu: " ip (name chosen))
       
       (->
       
