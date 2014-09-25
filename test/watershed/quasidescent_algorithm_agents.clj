@@ -288,17 +288,17 @@
                            :initial (agents 1)
                            :type :river}
      
-              :agent-three {:tributaries [:agent-two :cloud]
+              :agent-three {:tributaries [:agent-three :cloud]
                           :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
                           :initial (agents 2)
                           :type :river}
      
-              :agent-four {:tributaries [:agent-two :cloud]
+              :agent-four {:tributaries [:agent-four :cloud]
                           :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
                           :initial (agents 3)
                           :type :river}
      
-              :agent-five {:tributaries [:agent-two :cloud]
+              :agent-five {:tributaries [:agent-five :cloud]
                           :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
                           :initial (agents 4)
                           :type :river}})
