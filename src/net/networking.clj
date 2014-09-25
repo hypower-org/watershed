@@ -49,7 +49,9 @@
   
   [watershed accumulation expected]
   
-  (if (>= (count (keys accumulation)) expected)
+  (when (>= (count (keys accumulation)) expected)
+    
+    (Thread/sleep 5000) ;Do something better than this...
     
     (w/ebb watershed)))
   
@@ -84,17 +86,11 @@
                                   :initial {}
                                   :type :river}
                     
-;                    :watch {:tributaries [:accumulator] 
-;                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
-;                            :type :dam}
-                    
-                    }         
+                    :watch {:tributaries [:accumulator] 
+                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
+                            :type :dam}}         
                                                                     
                     (w/compile*))]
-    
-    (Thread/sleep 15000) 
-    
-    (w/ebb watershed)
     
     (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
@@ -133,10 +129,13 @@
       (let [aq (:aqueduct aqueduct)]
         
         (->
+          
+          ;rewrite this to use reduce...
     
           (apply merge
                   
-                  (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source}}
+                  (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source}
+                                    :on-ebbed (fn [] (w/ebb aqueduct))}
 
                                    {(make-key "source-" x) {:tributaries (mapv #(make-key "sink-" %) (:edges (x graph))) 
                                                             :sieve (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams)))
@@ -152,11 +151,13 @@
   
   (let [chosen (elect-leader neighbors)]
   
-    (if (= chosen ip)
-    
-        (monitor graph))
+
   
-    (d/let-flow [faucet (w/flow (f/faucet ip (name chosen) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
+    (d/let-flow [network (if (= chosen ip) (monitor graph))
+                 
+                 on-ebbed (if network (fn [] (w/ebb network)))
+                 
+                 faucet (w/flow (f/faucet ip (name chosen) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
       
       (->
       
@@ -165,7 +166,8 @@
                 (map (fn [x] 
                        
                        {x {:tributaries [] :sieve (fn [] (selector (fn [y] (x (read-string y))) (:sink faucet)))
-                           :type :source}}) 
+                           :type :source                                                   
+                           :on-ebbed on-ebbed}}) 
                     
                      requires))       
                   
@@ -175,7 +177,8 @@
                          
                          {(make-key "providing-" x) {:tributaries [x] 
                                                      :sieve (fn [stream] (s/connect (s/map (fn [data] (str {x data})) stream) (:source faucet)))
-                                                     :type :estuary}}) 
+                                                     :type :estuary                                                                            
+                                                     :on-ebbed on-ebbed}}) 
                        provides)))))))
 
   
