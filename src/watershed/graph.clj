@@ -1,22 +1,14 @@
 (ns watershed.graph)
 
 (defn transpose 
-  [graph] 
-  
-  (let [nodes (keys graph)]
-  
-    (apply merge (map (fn [node] 
-         
-                         {node {:edges (reduce (fn [edges k]     
-                            
-                                                 (if (node (set (:edges (k graph)))) 
-                              
-                                                   (conj edges k)
-                                             
-                                                   edges))
-                              
-                                               [] nodes)}})
-                    
+  [graph]  
+  (let [nodes (keys graph)] 
+    (apply merge (map (fn [node]        
+                         {node {:edges (reduce (fn [edges k]                                
+                                                 (if (node (set (:edges (k graph))))                             
+                                                   (conj edges k)                                          
+                                                   edges))                            
+                                               [] nodes)}})                    
                       nodes))))
 
 (defn dfs-visit 

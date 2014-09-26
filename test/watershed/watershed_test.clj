@@ -28,8 +28,6 @@
  
 (defn dam-fn 
   [w [a b]]
-  (println w)
-  (println "dam: " a b)
   (when (= b 1)
     (println "DONE!")
     (ebb w)))
@@ -101,7 +99,7 @@
    :c {:tributaries [:b] :sieve (fn [x] (s/consume println x))
        :type :estuary}
    
-   ;:watch {:tributaries [:b] :sieve (fn [w b] (s/consume #(dam-fn w %) b)) :type :dam}
+   :watch {:tributaries [:b] :sieve (fn [w b] (s/consume #(dam-fn w %) b)) :type :dam}
   
    :d {:tributaries [:b] :sieve (fn [x] (s/reduce concat (s/map identity x))) 
        :type :estuary}

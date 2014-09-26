@@ -1,5 +1,6 @@
 (ns watershed.core
   (:require [clojure.pprint :as p]    
+            [clojure.core.match :as m]
             [manifold.deferred :as d]
             [watershed.graph :as g]
             [manifold.stream :as s]
@@ -10,6 +11,8 @@
 (defprotocol ITide
   (flow [_])
   (ebb [_]))
+
+;TODO Implement dynamic add to watershed?  Not the best solution, but it may be required...
 
 (defprotocol IWatershed
   (supply-graph [_])
@@ -40,45 +43,32 @@
         
         (str " -> " (pr-str (.output o)))))))
 
-(defn- emit-flow
-  [sieve streams]   
-  (reify ITide     
-    (flow 
-      [_]       
-      (apply sieve streams))))
+;Do some matching to create a very efficient waterway
 
 (defn- emit-ebb 
   [output on-ebbed] 
-  (reify ITide 
-    (ebb 
-      [_] 
-      (if on-ebbed 
-        (on-ebbed))      
-      (if (s/stream? output) 
-        (s/close! output)
-        output))))
+  (m/match 
+    [(s/stream? output) (fn? on-ebbed)] 
+    [false false] (reify ITide (ebb [_] output))
+    [true false] (reify ITide (ebb [_] (s/close! output)))
+    [false true] (reify ITide (ebb [_] (on-ebbed) output))
+    [true true] (reify ITide (ebb [_] (on-ebbed) (s/close! output)))))
 
 (defn- waterway 
-  [title tributaries sieve streams on-ebbed] 
+  [{:keys [title tributaries sieve streams on-ebbed]}] 
   
-  (let [f (emit-flow sieve streams)
-      
-        output (flow f)
+  (let [output (if (empty? streams) (sieve) (apply sieve streams))
         
-        e (emit-ebb output on-ebbed)]  
+        e (emit-ebb output on-ebbed)] 
     
-    (->Waterway (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
+    (->Waterway (reify ITide (flow [_] output) (ebb [_] (ebb ^ITide e))) title tributaries output)))
 
 (defn- dam 
-  [watershed title tributaries sieve streams] 
+  [{:keys [title tributaries sieve streams watershed]}]
   
-  (let [f (emit-flow (fn [& args] (apply sieve (cons watershed args))) streams)
-      
-        output (flow f)
-        
-        e (emit-ebb output nil)]  
+  (let [output (if (empty? streams) ((sieve watershed)) (apply sieve (cons watershed streams)))]  
     
-    (->Waterway (reify ITide (flow [_] (flow ^ITide f)) (ebb [_] (ebb ^ITide e))) title tributaries output)))
+    (->Waterway (reify ITide (flow [_] output) (ebb [_])) title tributaries output)))
             
 ;BEING DEVELOPED!
 
@@ -140,7 +130,7 @@
                
                 (let [r (cur system)]                                     
                    
-                  (assoc started cur (waterway cur (:tributaries r) (:sieve r) (map (comp :output started) (tributaries cardinal)) (:on-ebbed r)))))
+                  (assoc started cur (waterway (merge r {:streams (map (comp :output started) (tributaries cardinal))})))))
              
               started
                            
@@ -156,7 +146,7 @@
   
  [system] 
  
- ;Test input!
+ ;Handle some basic input errors here.  There could be more in the future...e.g., make sure rivers have tributaries
  
  (letfn [(handler [x] 
                   (case x 
@@ -220,16 +210,22 @@
                             (fn [cyclic] 
                                    
                               (let [val (cyclic system)
+                                    
+                                    ;Alias input streams
                                   
-                                    input (repeatedly (count (:tributaries val)) s/stream)
+                                    streams (repeatedly (count (:tributaries val)) s/stream)
+                                    
+                                    ;I need to create an output so I can initialize it...unfortunate
                                    
                                     output (s/stream)
                                    
-                                    eddy (waterway cyclic (:tributaries val) (:sieve val) input (:on-ebbed val))]    
+                                    eddy (waterway (merge val {:streams streams}))]    
+                                
+                                ;Causes side effects :'(
                                
                                 (s/connect (:output eddy) output)
         
-                                {cyclic {:input input :eddy (assoc eddy :output output)}})))                        
+                                {cyclic {:streams streams :eddy (assoc eddy :output output)}})))                        
       
                           (apply merge))
         
@@ -241,20 +237,18 @@
     
      (doall (map (fn [cyclic] 
            
-                   (doall (map (fn [x y] (s/connect x y)) (map (comp :output system-connected) (:tributaries (cyclic system))) (:input (cyclic cycles-handled)))))
+                   (doall (map (fn [x y] (s/connect x y)) (map (comp :output system-connected) (:tributaries (cyclic system))) (:streams (cyclic cycles-handled)))))
              
                  (keys cycles-handled)))
-    
-     ;associate started rivers into watershed and attach dams!
+     
+     ;There's a potential problem here...there may some messages passed through the system before the dam gets access to them...should I fix this?
     
      (let [watershed (reduce-kv           
                        ;watershed cardinal dam 
                        (fn [w i d]     
-                         (let [ts (:tributaries d)
-                               title (dams i)]
-                           (assoc-in
-                             w [:watershed title]                      
-                             (dam w title ts (:sieve d) (map (comp :output system-connected) ts)))))         
+                         (assoc-in
+                           w [:watershed (dams i)]                      
+                           (dam (merge d {:streams (map (comp :output system-connected) (:tributaries d)) :watershed w}))))         
                        (watershed system-connected)                          
                        (mapv system dams))]
       
