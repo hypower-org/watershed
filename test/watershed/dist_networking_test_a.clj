@@ -26,7 +26,7 @@
                           :cpu-1-data {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] (u/time-now))))
                                        :type :source}})
                                                           
-                  w/compile*)))
+                  w/assemble)))
 
 
   

@@ -288,7 +288,7 @@
              
              })
     
-    w/compile*))
+    w/assemble))
 
 ;@current-state
 

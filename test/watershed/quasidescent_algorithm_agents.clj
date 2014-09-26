@@ -303,7 +303,7 @@
                           :initial (agents 4)
                           :type :river}})
     
-      w/compile*)))
+      w/assemble)))
 
 
 

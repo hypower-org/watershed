@@ -134,8 +134,8 @@
     
           (apply merge
                   
-                  (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source}
-                                    :on-ebbed (fn [] (w/ebb aqueduct))}
+                  (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source
+                                                          :on-ebbed (fn [] (w/ebb aqueduct))}}
 
                                    {(make-key "source-" x) {:tributaries (mapv #(make-key "sink-" %) (:edges (x graph))) 
                                                             :sieve (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams)))
@@ -143,7 +143,7 @@
                                         
                           agents))
         
-          w/compile*)))))
+          w/assemble)))))
     
 (defn cpu 
   

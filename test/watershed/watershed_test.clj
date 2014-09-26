@@ -111,7 +111,7 @@
 ;Randomly generated!
 
 (def outline 
-  (gen-outline 10))
+  (gen-outline 100))
 
 (def test-system 
   
@@ -119,7 +119,7 @@
     
     outline
     
-    compile*))
+    assemble))
   
 (ebb test-system)
 
