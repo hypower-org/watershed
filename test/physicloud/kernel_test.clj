@@ -12,6 +12,15 @@
             [watershed.utils :as u]
             [clojure.pprint :as p]
             [manifold.stream :as s]))
+
+
+
+(defn start 
+  [ip n]
           
-(def test-kernel @(net/kernel :10.10.10.5 2 :max-power 10 :target-power 5))  
-(def assembled (w/assemble test-kernel))
+  (def test-kernel @(net/kernel ip n :max-power 10 :target-power 5))  
+  (def assembled (w/assemble test-kernel)))
+
+
+
+

@@ -119,6 +119,8 @@
   
   [graph & {:keys [port] :or {port 10000}}] 
   
+  (println graph)
+  
   (let [graph (gr/transpose graph)
         
         agents (keys graph)        
