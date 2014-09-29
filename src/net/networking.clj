@@ -170,7 +170,7 @@
                  
                  network (if (= leader ip) 
                            (monitor                              
-                             (reduce (fn [m r] (assoc m r {:edges leader}))                                    
+                             (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
                                      {ip {:edges without-leader}} without-leader)))
                  
                  faucet (w/flow (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
