@@ -1,5 +1,6 @@
 (ns watershed.utils
-  (:use [clojure.java.shell :only [sh]]))
+  (:use [clojure.java.shell :only [sh]])
+  (:require [no.disassemble :as d]))
 
 (defn time-now 
   []
