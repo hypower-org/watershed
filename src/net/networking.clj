@@ -169,7 +169,9 @@
         
         faucet (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"]))
         
-        connected (d/catch (w/flow faucet) (fn [e] (println "Error connecting...")))]
+        connected (w/flow faucet) ;Do error handling in the future!!!!
+        
+        ]
     
     (println respondents)
     (println without-leader)
