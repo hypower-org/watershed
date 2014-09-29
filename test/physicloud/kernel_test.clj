@@ -18,7 +18,7 @@
 (defn start 
   [ip n]
           
-  (def test-kernel @(net/kernel ip n :max-power 10 :target-power 5))  
+  (def test-kernel (net/kernel ip n :max-power 10 :target-power 5))  
   (def assembled (w/assemble test-kernel)))
 
 

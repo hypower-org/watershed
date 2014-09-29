@@ -125,28 +125,28 @@
         
         agents (keys graph)        
         
-        aqueduct (a/aqueduct (vec (keys graph)) port (gloss/string :utf-8 :delimiters ["\r\n"]))]
-    
-    (d/let-flow [server (w/flow aqueduct)]   
-      
-      (let [aq (:aqueduct aqueduct)]
+        aqueduct (a/aqueduct (vec (keys graph)) port (gloss/string :utf-8 :delimiters ["\r\n"]))
         
-        (->
+        server (w/flow aqueduct)
+        
+        aq (:aqueduct aqueduct)] 
+        
+    (->
           
-          ;rewrite this to use reduce...
+      ;rewrite this to use reduce...
           
-          (reduce (fn [m agent] 
+      (reduce (fn [m agent] 
                     
-                    (assoc (assoc m (make-key "sink-" agent) {:tributaries [] :sieve (fn [] (:sink (agent aq))) :type :source
-                                                         :on-ebbed (fn [] (w/ebb aqueduct))})
+                (assoc (assoc m (make-key "sink-" agent) {:tributaries [] :sieve (fn [] (:sink (agent aq))) :type :source
+                                                          :on-ebbed (fn [] (@server) (w/ebb aqueduct))})
                            
-                           (make-key "source-" agent) {:tributaries (mapv #(make-key "sink-" %) (:edges (agent graph))) 
-                                                            :sieve (fn [& streams] (doall (map #(s/connect % (:source (agent aq))) streams)))
-                                                            :type :estuary})) 
+                       (make-key "source-" agent) {:tributaries (mapv #(make-key "sink-" %) (:edges (agent graph))) 
+                                                        :sieve (fn [& streams] (doall (map #(s/connect % (:source (agent aq))) streams)))
+                                                        :type :estuary})) 
                   
-                  {} agents)
+              {} agents)
         
-          w/assemble)))))
+      w/assemble)))
 
 (defn kernel 
   
@@ -160,92 +160,92 @@
         
         num-respondents (count respondents)
         
-        without-leader (disj respondents leader)]
+        without-leader (disj respondents leader)
+        
+        network (if (= leader ip) 
+                  (monitor                              
+                    (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
+                            {ip {:edges without-leader}} without-leader)))
+        
+        faucet (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"]))
+        
+        connected (d/catch (w/flow f/faucet) (fn [e] (println "Error connecting...")))]
     
     (println respondents)
     (println without-leader)
     (println leader)
-    
-    (d/let-flow [
-                 
-                 network (if (= leader ip) 
-                           (monitor                              
-                             (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
-                                     {ip {:edges without-leader}} without-leader)))
-                 
-                 faucet (w/flow (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
         
-        (if (= leader ip)
+    (if (= leader ip)
           
-          ;###########################THE MONITOR##################################
+      ;###########################THE MONITOR##################################
           
-          (->
+      (->
             
-            ;Get network data from agents...
+        ;Get network data from agents...
             
-            (reduce (fn [m r]                   
-                      (assoc m r 
-                             {:tributaries [] 
-                              :sieve (fn [] (selector (fn [y] (r (read-string y))) (:sink faucet)))
-                              :type :source}))                     
-                      {} without-leader)
+        (reduce (fn [m r]                   
+                  (assoc m r 
+                         {:tributaries [] 
+                          :sieve (fn [] (selector (fn [y] (r (read-string y))) (:sink faucet)))
+                          :type :source}))                     
+                  {} without-leader)
             
-            ;Add in monitor functionality + providing monitor data
+        ;Add in monitor functionality + providing monitor data
             
-            (merge 
+        (merge 
               
-              {ip 
-         
-               {:tributaries [ip :monitor]         
-                :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))         
-                :initial {:state (vec (repeat num-respondents 0)) :control (vec (repeat 6 0))                          
-                          :id (.indexOf (vec respondents) ip) :max max-power :tar target-power}     
-                :type :river}
-                            
-               :monitor 
-               
-               {:tributaries respondents
-                :sieve (fn [& streams] (s/map q/cloud-fn (apply s/zip streams)))
-                :type :river}
-               
-               :providing-monitor 
-               
-               {:tributaries [:monitor] 
-                :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (:source faucet)))
-                :type :estuary}}))
-          
-          ;###########################NOT THE MONITOR##################################
-          
-          ;Get monitor data over the network 
-          
-          {:monitor 
-           
-           {:tributaries [] :sieve (fn [] (selector (fn [y] (:monitor (read-string y))) (:sink faucet)))
-            :type :source}
-           
-           ;Use monitor data to computer next state
-           
-           ip 
+          {ip 
          
            {:tributaries [ip :monitor]         
             :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))         
-            :initial {:state (vec (repeat num-respondents 0)) :control (vec (repeat 6 0))                          
-                      :id (.indexOf (vec respondents) ip) :max max-power :tar target-power}          
+            :initial {:state (vec (repeat num-respondents 0)) :control (vec (repeat (inc num-respondents) 0))                          
+                      :id (.indexOf (vec respondents) ip) :max max-power :tar target-power}     
             :type :river}
+                            
+           :monitor 
+               
+           {:tributaries respondents
+            :sieve (fn [& streams] (s/map q/cloud-fn (apply s/zip streams)))
+            :type :river}
+               
+           :providing-monitor 
+               
+           {:tributaries [:monitor] 
+            :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (:source faucet)))
+            :type :estuary}}))
+          
+      ;###########################NOT THE MONITOR##################################
+          
+      ;Get monitor data over the network 
+          
+      {:monitor 
+           
+       {:tributaries [] :sieve (fn [] (selector (fn [y] (:monitor (read-string y))) (:sink faucet)))
+        :type :source}
+           
+       ;Use monitor data to computer next state
+           
+       ip 
          
-           ;Send computed data back over the network
-           
-           (make-key "providing-" ip)
+       {:tributaries [ip :monitor]         
+        :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))         
+        :initial {:state (vec (repeat num-respondents 0)) :control (vec (repeat (inc num-respondents) 0))                          
+                  :id (.indexOf (vec respondents) ip) :max max-power :tar target-power}          
+        :type :river}
          
-           {:tributaries [ip] 
-            :sieve (fn [stream] (s/connect (s/map (fn [data] (str {ip data})) stream) (:source faucet)))
-            :type :estuary}
+       ;Send computed data back over the network
+           
+       (make-key "providing-" ip)
+         
+       {:tributaries [ip] 
+        :sieve (fn [stream] (s/connect (s/map (fn [data] (str {ip data})) stream) (:source faucet)))
+        :type :estuary}
            
            
-           ;TODO add in a dam to check for "closeness" to a solution
+       ;TODO add in a dam to check for "closeness" to a solution
            
            
-           }))))
+       })))
                
 (defn cpu 
   
