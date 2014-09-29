@@ -1,6 +1,7 @@
 (ns net.networking
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
+            [physicloud.quasi-descent :as q]
             [gloss.core :as gloss]
             [aleph.tcp :as aleph]
             [manifold.deferred :as d]
@@ -90,7 +91,7 @@
                             :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
                             :type :dam}}         
                                                                     
-                    (w/compile*))]
+                    (w/assemble))]
     
     (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
                              
@@ -106,7 +107,7 @@
                                
                @(:output (:result (:watershed watershed))))
   
-    @leader))
+    {:leader @leader :respondents (keys @(:output (:result (:watershed watershed))))}))
 
 (defn- make-key 
   
@@ -131,28 +132,125 @@
         (->
           
           ;rewrite this to use reduce...
-    
-          (apply merge
+          
+          (reduce (fn [m agent] 
+                    
+                    (assoc (assoc m (make-key "sink-" agent) {:tributaries [] :sieve (fn [] (:sink (agent aq))) :type :source
+                                                         :on-ebbed (fn [] (w/ebb aqueduct))})
+                           
+                           (make-key "source-" agent) {:tributaries (mapv #(make-key "sink-" %) (:edges (agent graph))) 
+                                                            :sieve (fn [& streams] (doall (map #(s/connect % (:source (agent aq))) streams)))
+                                                            :type :estuary})) 
                   
-                  (mapcat (fn [x] [{(make-key "sink-" x) {:tributaries [] :sieve (fn [] (:sink (x aq))) :type :source
-                                                          :on-ebbed (fn [] (w/ebb aqueduct))}}
-
-                                   {(make-key "source-" x) {:tributaries (mapv #(make-key "sink-" %) (:edges (x graph))) 
-                                                            :sieve (fn [& streams] (doall (map #(s/connect % (:source (x aq))) streams)))
-                                                            :type :estuary}}]) 
-                                        
-                          agents))
+                  {} agents)
         
           w/assemble)))))
+
+(defn kernel 
+  
+  [ip neighbors & {:keys [port max-power target-power] :or {port 10000}}]  
+  
+  (let [discovery-data (elect-leader neighbors)
+        
+        leader (:leader discovery-data)
+        
+        respondents (set (:respondents discovery-data))
+        
+        num-respondents (count respondents)
+        
+        without-leader (disj respondents leader)]
     
+    (println respondents)
+    (println without-leader)
+    (println leader)
+    
+    (d/let-flow [
+                 
+                 network (if (= leader ip) 
+                           (monitor                              
+                             (reduce (fn [m r] (assoc m r {:edges leader}))                                    
+                                     {ip {:edges without-leader}} without-leader)))
+                 
+                 faucet (w/flow (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"])))]
+        
+        (if (= leader ip)
+          
+          ;###########################THE MONITOR##################################
+          
+          (->
+            
+            ;Get network data from agents...
+            
+            (reduce (fn [m r]                   
+                      (assoc m r 
+                             {:tributaries [] 
+                              :sieve (fn [] (selector (fn [y] (r (read-string y))) (:sink faucet)))
+                              :type :source}))                     
+                      {} without-leader)
+            
+            ;Add in monitor functionality + providing monitor data
+            
+            (merge 
+              
+              {ip 
+         
+               {:tributaries [ip :monitor]         
+                :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))         
+                :initial {:state (vec (repeat num-respondents 0)) :control (vec (repeat 6 0))                          
+                          :id (.indexOf (vec respondents) ip) :max max-power :tar target-power}     
+                :type :river}
+                            
+               :monitor 
+               
+               {:tributaries respondents
+                :sieve (fn [& streams] (s/map q/cloud-fn (apply s/zip streams)))
+                :type :river}
+               
+               :providing-monitor 
+               
+               {:tributaries [:monitor] 
+                :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (:source faucet)))
+                :type :estuary}}))
+          
+          ;###########################NOT THE MONITOR##################################
+          
+          ;Get monitor data over the network 
+          
+          {:monitor 
+           
+           {:tributaries [] :sieve (fn [] (selector (fn [y] (:monitor (read-string y))) (:sink faucet)))
+            :type :source}
+           
+           ;Use monitor data to computer next state
+           
+           ip 
+         
+           {:tributaries [ip :monitor]         
+            :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))         
+            :initial {:state (vec (repeat num-respondents 0)) :control (vec (repeat 6 0))                          
+                      :id (.indexOf (vec respondents) ip) :max max-power :tar target-power}          
+            :type :river}
+         
+           ;Send computed data back over the network
+           
+           (make-key "providing-" ip)
+         
+           {:tributaries [ip] 
+            :sieve (fn [stream] (s/connect (s/map (fn [data] (str {ip data})) stream) (:source faucet)))
+            :type :estuary}
+           
+           
+           ;TODO add in a dam to check for "closeness" to a solution
+           
+           
+           }))))
+               
 (defn cpu 
   
   [ip graph neighbors & {:keys [port requires provides] :or {port 10000 requires [] provides []}}] 
   
-  (let [chosen (elect-leader neighbors)]
-  
-
-  
+  (let [chosen (:leader (elect-leader neighbors))]
+    
     (d/let-flow [network (if (= chosen ip) (monitor graph))
                  
                  on-ebbed (if network (fn [] (w/ebb network)))
