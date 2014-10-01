@@ -1,4 +1,4 @@
-(ns watershed.geyser-test
+(ns networking.geyser-test
   (:require [lamina.core :as lamina]
             [manifold.deferred :as d]
             [watershed.core :as w]

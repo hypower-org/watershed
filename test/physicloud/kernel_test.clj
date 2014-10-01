@@ -8,6 +8,7 @@
             [net.aqueduct :as a]
             [net.networking :as net]
             [net.faucet :as f]
+            [physicloud.core :as phy]
             [physicloud.quasi-descent :as q]
             [watershed.utils :as u]
             [clojure.pprint :as p]
@@ -16,8 +17,13 @@
 (defn start 
   [ip n]
           
-  (def test-kernel (net/kernel ip n :max-power 10 :target-power 5))  
+  (def test-kernel (phy/kernel ip n :max-power 10 :target-power 5))  
   (def assembled (w/assemble test-kernel)))
+
+
+
+
+
 
 
 

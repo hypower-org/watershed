@@ -56,7 +56,7 @@
   (w/ebb [_]
     
     (doseq [s (vals aqueduct)]
-      (s/close! s))))
+      (s/close! (:source s)))))
 
 
 (defn aqueduct [rivers port frame]

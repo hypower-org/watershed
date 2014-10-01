@@ -1,4 +1,4 @@
-(ns watershed.dist-networking-test-a
+(ns networking.dist-networking-test-a
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
             [gloss.core :as gloss]

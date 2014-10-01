@@ -1,4 +1,4 @@
-(ns watershed.quasidescent-algorithm-cloud
+(ns networking.quasidescent-algorithm-cloud
   (:require [lamina.core :as lamina]
             [aleph.udp :as aleph-udp]
             [gloss.core :as gloss]

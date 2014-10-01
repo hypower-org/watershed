@@ -24,19 +24,19 @@
     
     (let [connector (fn this [start-time interval timeout]   
                       
-                  (Thread/sleep interval)
+                      (Thread/sleep interval)
                                 
-                  (try 
+                      (try 
                                                    
-                    (lamina/wait-for-result (aleph/tcp-client {:host host,
-                                                               :port port,
-                                                               :frame frame}))
+                        (lamina/wait-for-result (aleph/tcp-client {:host host,
+                                                                   :port port,
+                                                                   :frame frame}))
                                         
-                    (catch java.net.ConnectException e
+                        (catch java.net.ConnectException e
                                             
-                      (if (> (t/time-passed start-time) timeout)
-                        e
-                        #(this start-time interval timeout)))))]
+                          (if (> (t/time-passed start-time) timeout)
+                            e
+                            #(this start-time interval timeout)))))]
            
       (d/let-flow [connection (d/future (trampoline connector (t/time-now) interval timeout))]
                 
@@ -50,9 +50,7 @@
             (s/connect source (s/->sink connection))
             
             (s/on-closed sink (fn [] (s/close! source) (lamina/force-close connection)))
-            (s/on-closed sink (fn [] (s/close! source) (lamina/force-close connection))))
-                  
-          (d/error-deferred connection)))))
+            (s/on-closed source (fn [] (s/close! sink) (lamina/force-close connection))))))))
   
   w/ITide
   

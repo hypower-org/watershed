@@ -84,16 +84,17 @@
     
     (apply merge (map (fn [[k v]] (gen-river v k possible-sources)) types-assigned))))
 
-;Hand made outline
+;Hand made outli
 
 (def easy-outline 
   
   {:a {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] 1))) 
+       :group :a-b
        :type :source} 
    
-   :b {:tributaries [:b :a] :sieve (fn [& streams] (s/map cyclic-fn (apply s/zip streams))) 
+   :b {:tributaries [[:a-b]] :sieve (fn [& streams] (s/map cyclic-fn (apply s/zip streams))) 
        :type :river
-       
+       :group :a-b
        :initial [1 2]} 
    
    :c {:tributaries [:b] :sieve (fn [x] (s/consume println x))
@@ -109,19 +110,17 @@
 ;Randomly generated!
 
 (def outline 
-  (gen-outline 100))
+  (gen-outline 10))
 
 (def test-system 
   
   (-> 
     
-    outline
+    easy-outline
     
     assemble))
   
-(ebb test-system)
-
-
+;(ebb test-system)
 
 
 
