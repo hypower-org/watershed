@@ -114,13 +114,9 @@
 
 (def test-system 
   
-  (-> 
-    
-    easy-outline
-    
-    assemble))
+  (time (assemble easy-outline)))
   
-;(ebb test-system)
+(ebb test-system)
 
 
 

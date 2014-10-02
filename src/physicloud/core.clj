@@ -44,7 +44,7 @@
 
 (defn kernel 
   
-  [ip neighbors & {:keys [port max-power target-power] :or {port 10000}}]  
+  [ip neighbors & {:keys [port target-power max-power idle-power bcps] :or {port 10000}}]  
   
   (let [discovery-data (net/elect-leader neighbors)
         
@@ -76,7 +76,14 @@
                          ip respondents leader 
                  
                          {:state (vec (repeat num-respondents 0)) :control (vec (repeat (inc num-respondents) 0))                          
-                          :id (.indexOf (vec respondents) ip) :max max-power :tar target-power})))
+                          :id (.indexOf (vec respondents) ip)
+                          :tar target-power :max max-power}
+                         
+                         idle-power
+                         
+                         max-power
+                         
+                         bcps)))
 
 ;(defn cpu 
 ;  

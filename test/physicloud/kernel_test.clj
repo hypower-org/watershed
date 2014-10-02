@@ -17,11 +17,8 @@
 (defn start 
   [ip n]
           
-  (def test-kernel (phy/kernel ip n :max-power 10 :target-power 5))  
+  (def test-kernel (phy/kernel ip n :target-power 5 :max-power 8 :idle-power 3 :bcps 1000000))  
   (def assembled (w/assemble test-kernel)))
-
-
-
 
 
 

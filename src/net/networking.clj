@@ -141,8 +141,33 @@
                   
         {} (keys graph)))
 
+(defn- result-fn
+  [watershed final-states] 
+  
+  (if (every? :final (mapcat vals final-states))
+    
+    ;going to be something like {:10.10.10.5 {:final 5 :bcps 1000000 :idle 3 :max 8})
+    ;Just do best fit for now.  BFD (best-fit decreasing)
+    
+    (println "I should be bin packing!")
+    (w/ebb watershed)))
+
+(defn- aggregator-fn 
+  [states] 
+  (apply merge states))
+
+(defn- final-state-fn 
+  [ip [last-state new-agent-state]] 
+  (let [new ((:state new-agent-state) (:id new-agent-state))
+        last (get-in last-state [ip :old])] 
+    (if (get-in last-state [ip :final])
+      last-state
+      (if (< (incanter.core/abs (- new last)) 0.00001)
+        (assoc-in last-state [ip :final] new)
+        (assoc-in last-state [ip :old] new)))))
+
 (defn emit-kernel-outline 
-  [client ip respondents leader initial-data]   
+  [client ip respondents leader initial-data idle-power max-power bcps]   
   (let [num-respondents (count respondents)]
     
     (->
@@ -157,6 +182,16 @@
                             :sieve (fn [] (selector (fn [y] (r (read-string y))) (sink client)))
                             :type :source}))                     
                     {} (disj respondents leader))
+          
+          ;Getting final states from networked agents...
+          
+;          (merge (reduce (fn [m r]                   
+;                           (assoc m r 
+;                                  {:tributaries [] 
+;                                   :sieve (fn [] (selector (fn [y] ((make-key "final-state-" r) (read-string y))) (sink client)))
+;                                   :group :final-states 
+;                                   :type :source}))                     
+;                           {} (disj respondents leader)))
             
           (assoc 
               
@@ -169,31 +204,61 @@
             :providing-monitor 
                
             {:tributaries [:monitor] 
-             :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (source client)))
+             :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (source client) :downstream? false))
+             :type :estuary}
+            
+            :watch 
+         
+            {:tributaries [[:final-states]]
+             :sieve (fn [w & streams] (s/map (partial result-fn w) (apply s/zip streams)))      
+             :type :dam}
+            
+            :aggregator 
+            
+            {:tributaries [[:final-states]] 
+             :sieve (fn [& streams] (s/map aggregator-fn (apply s/zip streams)))
+             :type :river}
+            
+            :result 
+            
+            {:tributaries [:aggregator]
+             :sieve (fn [stream] (s/reduce merge stream))
              :type :estuary}))        
           
         {:monitor 
            
          {:tributaries [] :sieve (fn [] (selector (fn [y] (:monitor (read-string y))) (sink client)))
-          :type :source}
+          :type :source}       
+         
+         (make-key "providing-" (make-key "final-state-" ip))
+         
+         {:tributaries [(make-key "final-state-" ip)] 
+          :sieve (fn [stream] (s/connect (s/map (fn [data] (str {(make-key "final-state-" ip) data})) stream) (source client) :downstream? false))
+          :type :estuary}
          
          ;Send computed data back over the network
            
          (make-key "providing-" ip)
          
          {:tributaries [ip] 
-          :sieve (fn [stream] (s/connect (s/map (fn [data] (str {ip data})) stream) (source client)))
-          :type :estuary}}        
-           
-         ;TODO add in a dam to check for "closeness" to a solution
-                     
-         )
+          :sieve (fn [stream] (s/connect (s/map (fn [data] (str {ip data})) stream) (source client) :downstream? false))
+          :type :estuary}})
       
-      (assoc ip {:tributaries [ip :monitor]         
-                 :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))       
-                 :on-ebbed (fn [] (disconnect client))
-                 :initial initial-data       
-                 :type :river}))))             
+      (assoc ip 
+             
+             {:tributaries [ip :monitor]         
+              :sieve (fn [& streams] (s/map q/agent-fn (apply s/zip streams)))       
+              :on-ebbed (fn [] (disconnect client))
+              :initial initial-data       
+              :type :river}
+             
+             (make-key "final-state-" ip)
+         
+             {:tributaries [(make-key "final-state-" ip) ip]
+              :sieve (fn [& streams] (s/map (partial final-state-fn ip) (apply s/zip streams)))
+              :initial {ip {:old 1 :bcps bcps :idle idle-power :max max-power}}
+              :group :final-states
+              :type :river}))))             
 
   
   

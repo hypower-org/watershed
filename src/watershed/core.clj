@@ -16,6 +16,7 @@
 
 (defprotocol IWatershed
   (supply-graph [_])
+  (isolate [_ reference])
   (dependents [_ title]))
 
 (defrecord Waterway [tide title group tributaries output]
@@ -103,32 +104,40 @@
   ITide
   
   (ebb [_]              
-    (ebb-helper watershed)))
+    (ebb-helper watershed))
+  
+  
+  IWatershed
+  
+  (isolate 
+    [_ reference] 
+    
+    (if (vector? reference) 
+      (let [[group op & args] reference]       
+        (case op 
+          :without (vec (remove (set args) (group watershed)))
+          :only (vec (filter (set args) (group watershed)))
+          (group watershed))
+      (reference watershed))))
+  
+  
+  
+  )
   
 (defn watershed 
   [system] 
   (->Watershed system))
  
-(defn- start-order
- [state active]  
- (letfn [(helper 
-           [state current-order]
-           (if (empty? state)
-             current-order
-             (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set (concat current-order active)) z)) (conj x y) x)) [] state)]
-               (recur (reduce dissoc state possible)
-                      (reduce conj current-order possible)))))]    
-   (reverse (helper state nil))))
- 
-(defn- start-in-order  
- [groups system started] 
- (let [order (start-order (zipmap (keys system) (map (comp #(expand-dependencies groups %) :tributaries) (vals system))) (keys started))       
-       tributaries (mapv (comp :tributaries system) order)] 
-   (reduce-kv (fn [started cardinal cur]                                      
-                (let [r (cur system)]                                    
-                  (assoc started cur (waterway (merge r {:title cur :streams (map (comp :output started) (tributaries cardinal))})))))            
-              started                          
-              (vec order))))
+;(defn- start-order
+; [state active]  
+; (letfn [(helper 
+;           [state current-order]
+;           (if (empty? state)
+;             current-order
+;             (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set (concat current-order active)) z)) (conj x y) x)) [] state)]
+;               (recur (reduce dissoc state possible)
+;                      (reduce conj current-order possible)))))]    
+;   (reverse (helper state nil))))
  
 (defn- dependents* 
   [groups system title] 
@@ -138,7 +147,7 @@
   
 (defn assemble
   
- [outline] 
+ [outline & {:keys [pre-existing]}] 
  
  ;Handle some basic input errors here.  There could be more in the future...e.g., make sure rivers have tributaries0
  
@@ -162,24 +171,24 @@
                   {}       
                   outline)         
          
-         expand-dependencies* (partial expand-dependencies groups)
+         all-deps (reduce (fn [m k] (update-in m [k] #(expand-dependencies groups (:tributaries %)))) outline (keys outline))
          
          dams (reduce-kv (fn [coll k v]                   
                            (if (= (:type v) :dam)                   
                              (conj coll k)                   
                              coll))               
-                         [] outline)
-        
-         possibly-cyclic (reduce-kv (fn [sys k v]                                      
-                                      (let [t (:type v)]
-                                        (if (not (or (= t :estuary) (= t :source)))                                  
-                                          (assoc sys k v)        
-                                          sys)))                                                      
-                                    {} (reduce dissoc outline dams))
+                         [] outline)          
         
          cycles-handled (->>                      
                            
-                          (let [graph (apply merge (map (fn [x] {x {:edges (dependents* groups outline x)}}) (keys possibly-cyclic)))]
+                          (let [graph (apply merge (map (fn [x] {x {:edges (dependents* groups outline x)}})                                                       
+                                                        (reduce (fn [coll [k v]]                                      
+                                                                  (let [t (:type v)]
+                                                                    (if (not (or (= t :estuary) (= t :source)))                                  
+                                                                      (conj coll k)        
+                                                                      coll)))                                                      
+                                                                [] 
+                                                                (reduce dissoc outline dams))))]
 
                             (g/strongly-connected-components graph (g/transpose graph)))      
                                                 
@@ -189,7 +198,7 @@
                             (fn [x]       
                               (if (= (count x) 1)       
                                 (let [val (first x)]                              
-                                  (not (val (set (expand-dependencies* (:tributaries (val possibly-cyclic))))))))))
+                                  (not (val (set (val all-deps))))))))
                           
                           ;Flatten all the trees.  They're uncessary for what we want to do...maybe...
       
@@ -205,7 +214,7 @@
                                     
                                     ;Alias input streams
                                   
-                                    streams (repeatedly (count (expand-dependencies* (:tributaries val))) s/stream)
+                                    streams (repeatedly (count (cyclic all-deps)) s/stream)
                                     
                                     ;I need to create an output so I can initialize it...unfortunate
                                    
@@ -220,27 +229,49 @@
                                 {cyclic {:streams streams :eddy (assoc eddy :output output)}})))                        
       
                           (apply merge))
+         
+         cycles-handled-ks (keys cycles-handled)
         
-         system-connected (start-in-order groups                                          
-                                          (reduce dissoc outline (concat (keys cycles-handled) dams))   
-                                          (zipmap (keys cycles-handled) (map :eddy (vals cycles-handled))))]
+         system-connected (let [active (concat cycles-handled-ks dams (keys pre-existing))
+                                
+                                all-deps (reduce dissoc all-deps active)
+                                
+                                outline (reduce dissoc outline active)
+                                
+                                started (merge (reduce (fn [m k] (update-in m [k] :eddy)) cycles-handled cycles-handled-ks) pre-existing)
+                                
+                                start-order (fn [state current-order]
+                                                (if (empty? state)
+                                                  current-order
+                                                  (let [possible (reduce-kv 
+                                                                   (fn [x y deps]                                               
+                                                                     (if (or (empty? deps) (every? (set (concat current-order active)) deps)) (conj x y) x)) [] state)]
+                                                    (recur (reduce dissoc state possible)
+                                                           (reduce conj current-order possible)))))]
+   
+                            (reduce (fn [started cur]    
+                                      (let [r (cur outline)]       
+                                        (assoc started cur (waterway (merge r {:title cur :streams (map (comp :output started) (cur all-deps))})))))            
+                                    started                          
+                                    (vec (reverse (start-order all-deps nil)))))]
     
-     ;connect cyclic elements to non-cyclic elements
+     ;connect cyclic elements to non-cyclic elements.  Side effecty. Ewww
     
      (doall (map (fn [cyclic]           
                    (doall (map (fn [x y] (s/connect x y)) 
                                (map (comp :output system-connected)                                                               
-                                    (expand-dependencies* (:tributaries (cyclic outline)))) (:streams (cyclic cycles-handled)))))            
-                 (keys cycles-handled)))
+                                    (cyclic all-deps)) (:streams (cyclic cycles-handled)))))            
+                 cycles-handled-ks))
      
      ;There's a potential problem here...there may some messages passed through the system before the dam gets access to them...should I fix this?
     
      (let [watershed (reduce-kv           
                        ;watershed cardinal dam 
-                       (fn [w i d]     
-                         (assoc-in
-                           w [:watershed (dams i)]                      
-                           (dam (merge d {:title (dams i) :streams (map (comp :output system-connected) (expand-dependencies* (:tributaries d))) :watershed w}))))         
+                       (fn [w i d]   
+                         (let [dam-key (dams i)]
+                           (assoc-in
+                             w [:watershed dam-key]                      
+                             (dam (merge d {:title dam-key :streams (map (comp :output system-connected) (dam-key all-deps)) :watershed w})))))         
                        (watershed              
                          (reduce-kv 
                            (fn [m k v]   
@@ -252,7 +283,7 @@
                            system-connected))                          
                        (mapv outline dams))]
       
-       (doseq [c (keys cycles-handled)] 
+       (doseq [c cycles-handled-ks] 
       
          ;Get the system rolling...could probably do this more effectively.  For right now, just put initial values into cycles
 		      
