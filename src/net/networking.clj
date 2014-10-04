@@ -186,7 +186,7 @@
           ;Getting final states from networked agents...
           
           (merge (reduce (fn [m r]                   
-                           (assoc m r 
+                           (assoc m (make-key "final-state-" r) 
                                   {:tributaries [] 
                                    :sieve (fn [] (selector (fn [y] ((make-key "final-state-" r) (read-string y))) (sink client)))
                                    :group :final-states 
@@ -205,13 +205,7 @@
                
             {:tributaries [:monitor] 
              :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (source client)))
-             :type :estuary}
-            
-            :watch 
-         
-            {:tributaries [[:final-states]]
-             :sieve (fn [w & streams] (s/consume (partial result-fn w) (apply s/zip streams)))      
-             :type :dam}
+             :type :estuary}          
             
             :aggregator 
             
@@ -259,7 +253,13 @@
               :sieve (fn [& streams] (s/map (partial final-state-fn ip) (apply s/zip streams)))
               :initial {ip {:old 1 :bcps bcps :idle idle-power :max max-power}}
               :group :final-states
-              :type :river}            
+              :type :river}        
+             
+             :watch 
+         
+             {:tributaries [[:final-states]]
+              :sieve (fn [w & streams] (s/consume (partial result-fn w) (apply s/zip streams)))      
+              :type :dam}
              
              ))))             
 

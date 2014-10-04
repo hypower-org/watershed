@@ -208,8 +208,6 @@
   
   [agents]     
   
-  (println agents)
-  
   (let [aggregate-states (mapv (fn [x] ((:state x) (:id x))) agents)]    
     
     (reset! current-state (first agents))
