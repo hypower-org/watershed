@@ -235,7 +235,7 @@
          (make-key "providing-" (make-key "final-state-" ip))
          
          {:tributaries [(make-key "final-state-" ip)] 
-          :sieve (fn [stream] (s/connect (s/map (fn [data] (str {(make-key "final-state-" ip) data})) stream) (source client)))
+          :sieve (fn [stream] (s/connect (s/map (fn [data] (pr-str {(make-key "final-state-" ip) data})) stream) (source client)))
           :type :estuary}
          
          ;Send computed data back over the network
@@ -243,7 +243,7 @@
          (make-key "providing-" ip)
          
          {:tributaries [ip] 
-          :sieve (fn [stream] (s/connect (s/map (fn [data] (str {ip data})) stream) (source client)))
+          :sieve (fn [stream] (s/connect (s/map (fn [data] (pr-str {ip data})) stream) (source client)))
           :type :estuary}})
       
       (assoc ip 
@@ -259,8 +259,7 @@
               :sieve (fn [& streams] (s/map (partial final-state-fn ip) (apply s/zip streams)))
               :initial {ip {:old 1 :bcps bcps :idle idle-power :max max-power}}
               :group :final-states
-              :type :river}
-             
+              :type :river}            
              
              ))))             
 

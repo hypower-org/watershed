@@ -117,28 +117,29 @@
                      
                       w/assemble)
           
-          result @(:output (:result (:watershed stage-one)))]
+          result (do (p/pprint stage-one) (if (= leader ip) @(:output (:result (:watershed stage-one))) nil))]
       
-      (println (bin-pack (zipmap
+      (if result 
+        (println (bin-pack (zipmap
         
-                           (keys result)
+                             (keys result)
             
-                           (map (fn [final-value] 
-                                  (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)
+                             (map (fn [final-value] 
+                                    (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)
                                                    
-                                                                (/ load (:bcps final-value))) (:idle final-value))]
+                                                                  (/ load (:bcps final-value))) (:idle final-value))]
                                                   
-                                               (if (< result (:final final-value))
-                                                 result))))
+                                                 (if (< result (:final final-value))
+                                                   result))))
                                                   
-                                (vals result)))
+                                  (vals result)))
                          
-                         tasks))
+                           tasks)))
       
       
     
     
-    )))
+      )))
 
 ;(defn cpu 
 ;  
