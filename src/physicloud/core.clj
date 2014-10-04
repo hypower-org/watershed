@@ -15,6 +15,34 @@
 
 ;add in kernel creation
 
+(def test-bins {:1 (fn [x] (let [result (* 3 x)] (if (<= result 3) result))) :2 (fn [x] (* 6 x)) :3 (fn [x] (* 7 x))})
+(def test-tasks [1 2])
+
+(defn- <* 
+  [x y] 
+  (if x 
+    (if y
+      (< x y)
+      true)
+    false))
+
+(defn- min*
+  [x & xs] 
+  (reduce (fn [cur x] (if (<* x cur) x cur)) x xs))
+
+(defn bin-pack 
+  [bin-fns tasks]  
+  (let [bins (vec (keys bin-fns))      
+        result (zipmap bins (repeat (count bins) []))]    
+    (reduce      
+      (fn [r t]       
+        (let [costs (mapv (fn [bin] ((bin bin-fns) (apply + (conj (bin result) t)))) bins)]           
+          (if (some some? costs)        
+            (update-in r [(bins (.indexOf costs (apply min* costs)))] #(conj % t))           
+            r)))    
+      result    
+      tasks)))
+
 (defn monitor 
   
   [graph & {:keys [port] :or {port 10000}}] 
@@ -44,7 +72,7 @@
 
 (defn kernel 
   
-  [ip neighbors & {:keys [port target-power max-power idle-power bcps] :or {port 10000}}]  
+  [ip neighbors tasks & {:keys [port target-power max-power idle-power bcps] :or {port 10000}}]  
   
   (let [discovery-data (net/elect-leader neighbors)
         
@@ -68,22 +96,49 @@
     
     (println "Chosen leader: " leader)
     
-    (net/emit-kernel-outline (reify net/IClient 
-                               (net/source [_] (:source faucet))
-                               (net/sink [_] (:sink faucet))
-                               (net/disconnect [_] (w/ebb faucet)))     
+    (let [stage-one (->
+                     
+                      (net/emit-kernel-outline (reify net/IClient 
+                                                 (net/source [_] (:source faucet))
+                                                 (net/sink [_] (:sink faucet))
+                                                 (net/disconnect [_] (w/ebb faucet)))     
                  
-                         ip respondents leader 
+                                           ip respondents leader 
                  
-                         {:state (vec (repeat num-respondents 0)) :control (vec (repeat (inc num-respondents) 0))                          
-                          :id (.indexOf (vec respondents) ip)
-                          :tar target-power :max max-power}
+                                           {:state (vec (repeat num-respondents 0)) :control (vec (repeat (inc num-respondents) 0))                          
+                                            :id (.indexOf (vec respondents) ip)
+                                            :tar target-power :max max-power}
                          
-                         idle-power
+                                           idle-power
                          
-                         max-power
+                                           max-power
                          
-                         bcps)))
+                                           bcps)
+                     
+                      w/assemble)
+          
+          result @(:output (:result (:watershed stage-one)))]
+      
+      (println (bin-pack (zipmap
+        
+                           (keys result)
+            
+                           (map (fn [final-value] 
+                                  (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)
+                                                   
+                                                                (/ load (:bcps final-value))) (:idle final-value))]
+                                                  
+                                               (if (< result (:final final-value))
+                                                 result))))
+                                                  
+                                (vals result)))
+                         
+                         tasks))
+      
+      
+    
+    
+    )))
 
 ;(defn cpu 
 ;  

@@ -233,17 +233,5 @@
   
   states)
 
-(defn watch-fn 
-  
-  [watershed [agent]] 
-  
-  (when (< (abs (+ (del-objective-function agent) (dot-prod (:control agent) (del-global-constraint agent)))) 0.001)
-    
-    (println (+ (del-objective-function agent) (dot-prod (:control agent) (del-global-constraint agent))))
-    
-    (println "done!")
-    
-    (w/ebb watershed)))
-
 ;use gradient for error calc! (+ (del-objective-function @current-state) (dot-prod (:control @current-state) (del-global-constraint @current-state))) 
 
