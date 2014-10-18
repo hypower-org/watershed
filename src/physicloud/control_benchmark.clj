@@ -11,9 +11,13 @@
 
   (m/matrix (partition n (range 1 (inc (* n n))))))
 
+;1.0839593584649472E7
+
 (defn big-computation 
   []
-  (let [comp (m/inverse (gen-matrix 100))]))
+  (let [comp (m/inverse (gen-matrix 10))
+        comp-two (m/add (gen-matrix 10) (gen-matrix 10))
+        comp-three (m/mul (gen-matrix 10) (gen-matrix 10))]))
 
 (defn- rand-int+ 
   [n]

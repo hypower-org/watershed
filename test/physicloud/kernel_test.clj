@@ -17,7 +17,7 @@
 (defn start 
   [ip n target-power max-power idle-power bcps alpha]
           
-  (def test-kernel (phy/kernel ip n (vec (repeat 1000 5000)) :target-power target-power :max-power max-power :idle-power idle-power :bcps bcps :alpha alpha)))
+  (def test-kernel (phy/kernel ip n (vec (repeat 1000 3500)) :target-power target-power :max-power max-power :idle-power idle-power :bcps bcps :alpha alpha)))
 
 
 
