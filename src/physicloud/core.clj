@@ -36,7 +36,7 @@
         result (zipmap bins (repeat (count bins) []))]    
     (reduce      
       (fn [r t]       
-        (let [costs (mapv (fn [bin] ((bin bin-fns) (apply + (conj (bin result) t)))) bins)]           
+        (let [costs (mapv (fn [bin] ((bin bin-fns) (apply + (conj (bin r) t)))) bins)]           
           (if (some some? costs)        
             (update-in r [(bins (.indexOf costs (apply min* costs)))] #(conj % t))           
             r)))    
@@ -72,7 +72,7 @@
 
 (defn kernel 
   
-  [ip neighbors tasks & {:keys [port target-power max-power idle-power bcps] :or {port 10000}}]  
+  [ip neighbors tasks & {:keys [port target-power max-power idle-power bcps alpha] :or {port 10000}}]  
   
   (let [discovery-data (net/elect-leader neighbors)
         
@@ -107,14 +107,14 @@
                  
                                            {:state (vec (repeat num-respondents 0)) :control (vec (repeat (inc num-respondents) 0))                          
                                             :id (.indexOf (vec respondents) ip)
-                                            :tar target-power :max max-power}
+                                            :tar target-power :max max-power :alpha alpha}
                          
                                            idle-power
                          
                                            max-power
                          
                                            bcps)
-                     
+                                                              
                       w/assemble)
           
           result (if (= leader ip) @(:output (:result (:watershed stage-one))) nil)] 
@@ -124,48 +124,59 @@
       
       (w/ebb faucet)
         
-      (let [task-assignment (if result (bin-pack (zipmap
-        
-                                                   (keys result)
-            
-                                                   (map (fn [final-value] 
-                                                          (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)
-                                                   
-                                                                                        (/ load (:bcps final-value))) (:idle final-value))]
+      (let [bin-fns (zipmap 
+                      
+                      (keys result)
+                      
+                      (map (fn [final-value] 
+                             (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)                                                   
+                                                           (* 100 (/ load (:bcps final-value)))) (:idle final-value))]
                                                   
-                                                                       (if (< result (:final final-value))
-                                                                         result))))
+                                          (if (< result (:final final-value))
+                                            result))))
                                                   
-                                                        (vals result)))
-                         
-                                                 tasks))
+                         (vals result)))
+                            
             
-            network (if (= leader ip) 
-                      (monitor (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
-                                       {ip {:edges without-leader}} without-leader)))
-        
-            faucet (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"]))
+            task-assignment (if result (bin-pack bin-fns tasks))
             
-            connected (w/flow faucet)]
+;            network (if (= leader ip) 
+;                      (monitor (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
+;                                       {ip {:edges without-leader}} without-leader)))
+;        
+;            faucet (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"]))
+;            
+;            connected (w/flow faucet)
+            
+            ]
         
-        (if task-assignment 
+        (when task-assignment
           
-         (w/assemble (net/emit-task-assignment-outline 
-                       (reify net/IClient 
-                         (net/source [_] (:source faucet))
-                         (net/sink [_] (:sink faucet))
-                         (net/disconnect [_] (w/ebb network) (w/ebb faucet)))
-                        
-                       ip
-                                                               
-                       task-assignment))       
+          (doseq [i respondents]
+            (spit (str (name i) ".edn") (mapv (comp #(nth % (.indexOf (vec respondents) i)) :state) @(:output (:data-gatherer (:watershed stage-one))))))
           
-          (w/assemble (net/emit-task-reception-outline 
-                        (reify net/IClient 
-                           (net/source [_] (:source faucet))
-                           (net/sink [_] (:sink faucet))
-                           (net/disconnect [_] (w/ebb faucet)))                                                    
-                        ip)))
+          (spit "resulting-power.edn" (reduce (fn [m [k v]] (println ((k bin-fns) (reduce + v))) (println (reduce + v)) (assoc m k ((k bin-fns) (reduce + v)))) {} task-assignment))
+        
+          (spit "task-assignment.edn" (reduce (fn [m [k v]] (assoc m k (count v))) {} task-assignment)))
+;        
+;        (if task-assignment 
+;          
+;         (w/assemble (net/emit-task-assignment-outline 
+;                       (reify net/IClient 
+;                         (net/source [_] (:source faucet))
+;                         (net/sink [_] (:sink faucet))
+;                         (net/disconnect [_] (w/ebb network) (w/ebb faucet)))
+;                        
+;                       ip
+;                                                               
+;                       task-assignment))       
+;          
+;          (w/assemble (net/emit-task-reception-outline 
+;                        (reify net/IClient 
+;                           (net/source [_] (:source faucet))
+;                           (net/sink [_] (:sink faucet))
+;                           (net/disconnect [_] (w/ebb faucet)))                                                    
+;                        ip)))
         
         
         ))))

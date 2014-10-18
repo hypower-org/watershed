@@ -14,7 +14,7 @@
 (use 'clojure.pprint)
 (use '(incanter core charts))
 
-(def step-size 0.001)
+(def step-size 0.1)
 (def error 0.001)
 
 (defn remove-index
@@ -74,12 +74,18 @@
 (defn objective-function 
   [agent] 
   
-  (pow (- ((:state agent) (:id agent)) (:tar agent)) 4))
+  (pow (- ((:state agent) (:id agent)) (:tar agent)) 2))
   
 (defn del-objective-function
   [agent]
   
-  (* 4 (pow (- ((:state agent) (:id agent)) (:tar agent)) 3)))
+  (* 2 (- ((:state agent) (:id agent)) (:tar agent)) (:alpha agent)))
+
+(defn- positive 
+  [num] 
+  (if (> num 0)
+    num
+    0))
 
 (defn global-constraint
   [agents]
@@ -89,7 +95,7 @@
       
       (concat [(- (reduce + states) (reduce + (map :tar agents)))]
               
-              (mapv (fn [x] (- ((:state x) (:id x)) (:max x))) agents))))
+              (mapv (fn [x] (positive (- ((:state x) (:id x)) (:max x)))) agents))))
 
 (defn del-global-constraint 
   [agent]
@@ -155,15 +161,15 @@
 
 (def p (-> 
   
-         (xy-plot [] [])
+         (xy-plot [] [] :legend true :series-label "Agent 1" :x-label "iterations" :y-label "power (w)")
   
-         (add-lines [] [])
+         (add-lines [] [] :series-label "Agent 2")
   
-         (add-lines [] [])
+         (add-lines [] [] :series-label "Agent 3")
   
-         (add-lines [] [])
+         (add-lines [] [] :series-label "Agent 4")
   
-         (add-lines [] [])
+         (add-lines [] [] :series-label "Agent 5")
   
          ))
 
@@ -232,6 +238,3 @@
       ))
   
   states)
-
-;use gradient for error calc! (+ (del-objective-function @current-state) (dot-prod (:control @current-state) (del-global-constraint @current-state))) 
-
