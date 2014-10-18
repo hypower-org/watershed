@@ -158,6 +158,7 @@
 
 (defn- final-state-fn 
   [ip [last-state new-agent-state]] 
+  (println new-agent-state)
   (let [new ((:state new-agent-state) (:id new-agent-state))
         last (get-in last-state [ip :old])] 
     (if (get-in last-state [ip :final])
@@ -201,11 +202,11 @@
              :sieve (fn [& streams] (s/map q/cloud-fn (apply s/zip streams)))
              :type :river}
             
-            :data-gatherer 
-            
-            {:tributaries [ip]
-             :sieve (fn [stream] (s/reduce concat (s/map identity stream)))
-             :type :estuary}
+;            :data-gatherer 
+;            
+;            {:tributaries [ip]
+;             :sieve (fn [stream] (s/reduce concat (s/map identity stream)))
+;             :type :estuary}
                
             :providing-monitor 
                
@@ -267,7 +268,13 @@
               :sieve (fn [w & streams] (s/consume (partial result-fn w) (apply s/zip streams)))      
               :type :dam}
              
-             ))))             
+             ))))          
+
+
+
+
+
+
 
 (defn emit-task-assignment-outline 
   [client ip task-assignment]
