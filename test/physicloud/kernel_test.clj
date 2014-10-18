@@ -15,9 +15,9 @@
             [manifold.stream :as s]))
 
 (defn start 
-  [ip n]
+  [ip n target-power max-power idle-power bcps]
           
-  (def test-kernel (phy/kernel ip n [1000 1000 2000] :target-power 5 :max-power 8 :idle-power 3 :bcps 1000000)))
+  (def test-kernel (phy/kernel ip n [1000 1000 2000] :target-power target-power :max-power max-power :idle-power idle-power :bcps bcps)))
 
 
 

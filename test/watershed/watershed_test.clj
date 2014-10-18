@@ -88,7 +88,7 @@
 
 (def easy-outline 
   
-  {:a {:tributaries [] :sieve (fn [] (s/periodically 1000 (fn [] 1))) 
+  {:a {:tributaries [] :sieve (fn [] (s/periodically 100 (fn [] 1))) 
        :group :a-b
        :type :source} 
    

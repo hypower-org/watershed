@@ -128,17 +128,6 @@
   [system] 
   (->Watershed system))
  
-;(defn- start-order
-; [state active]  
-; (letfn [(helper 
-;           [state current-order]
-;           (if (empty? state)
-;             current-order
-;             (let [possible (reduce-kv (fn [x y z] (if (or (empty? z) (every? (set (concat current-order active)) z)) (conj x y) x)) [] state)]
-;               (recur (reduce dissoc state possible)
-;                      (reduce conj current-order possible)))))]    
-;   (reverse (helper state nil))))
- 
 (defn- dependents* 
   [groups system title] 
   (reduce-kv      

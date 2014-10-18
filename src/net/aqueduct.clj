@@ -51,7 +51,9 @@
               
               (s/on-closed sink (fn [] (server) (s/close! source) (lamina/close stream)))
             
-              (s/on-closed source (fn [] (server) (s/close! sink) (lamina/close stream)))))))))
+              (s/on-closed source (fn [] (server) (s/close! sink) (lamina/close stream)))))
+          
+          server))))
   
   (w/ebb [_]
     

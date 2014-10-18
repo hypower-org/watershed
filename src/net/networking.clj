@@ -263,6 +263,81 @@
              
              ))))             
 
+(defn emit-task-assignment-outline 
+  [client ip task-assignment]
+  
+  {:monitor 
+   
+   {:tributaries [] 
+    :sieve (fn [] (s/periodically 1000 (fn [] task-assignment)))
+    :on-ebbed (fn [] (disconnect client))
+    :type :source}
+   
+   :watch 
+   
+   {:tributaries [:monitor] 
+    :sieve (fn [w stream] (s/consume (fn [x] (println x) (if (ip x) (w/ebb w))) stream))
+    :type :dam}
+   
+   :aggregator 
+   
+   {:tributaries [:monitor] 
+    :sieve (fn [stream] (s/reduce merge (s/map (fn [x] (println "ID:" x) x) stream)))
+    :type :estuary}
+   
+   :providing-monitor 
+   
+   {:tributaries [:monitor] 
+    :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) stream) (source client)))
+    :type :estuary}})
+
+(defn emit-task-reception-outline 
+  [client ip] 
+  
+  {:monitor 
+           
+   {:tributaries [] :sieve (fn [] (selector (fn [y] (:monitor (read-string y))) (sink client)))
+    :on-ebbed (fn [] (disconnect client))
+    :type :source} 
+   
+   :aggregator 
+   
+   {:tributaries [:monitor] 
+    :sieve (fn [stream] (s/reduce merge (s/map identity stream)))
+    :type :estuary}
+   
+   :watch 
+   
+   {:tributaries [:monitor] 
+    :sieve (fn [w stream] (s/consume (fn [x] (if (ip x) (w/ebb w))) stream))
+    :type :dam}})
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   
 

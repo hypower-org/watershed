@@ -117,32 +117,58 @@
                      
                       w/assemble)
           
-          result (do (p/pprint stage-one) (if (= leader ip) @(:output (:result (:watershed stage-one))) nil))]
+          result (if (= leader ip) @(:output (:result (:watershed stage-one))) nil)] 
       
-      (if result 
-        (println (bin-pack (zipmap
+      (if (= ip leader) 
+        (w/ebb network))
+      
+      (w/ebb faucet)
         
-                             (keys result)
+      (let [task-assignment (if result (bin-pack (zipmap
+        
+                                                   (keys result)
             
-                             (map (fn [final-value] 
-                                    (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)
+                                                   (map (fn [final-value] 
+                                                          (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)
                                                    
-                                                                  (/ load (:bcps final-value))) (:idle final-value))]
+                                                                                        (/ load (:bcps final-value))) (:idle final-value))]
                                                   
-                                                 (if (< result (:final final-value))
-                                                   result))))
+                                                                       (if (< result (:final final-value))
+                                                                         result))))
                                                   
-                                  (vals result)))
+                                                        (vals result)))
                          
-                           tasks)))
-      
-      
-      ;ADD IN STAGE TWO! :O
-      
-      
-    
-    
-      )))
+                                                 tasks))
+            
+            network (if (= leader ip) 
+                      (monitor (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
+                                       {ip {:edges without-leader}} without-leader)))
+        
+            faucet (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"]))
+            
+            connected (w/flow faucet)]
+        
+        (if task-assignment 
+          
+         (w/assemble (net/emit-task-assignment-outline 
+                       (reify net/IClient 
+                         (net/source [_] (:source faucet))
+                         (net/sink [_] (:sink faucet))
+                         (net/disconnect [_] (w/ebb network) (w/ebb faucet)))
+                        
+                       ip
+                                                               
+                       task-assignment))       
+          
+          (w/assemble (net/emit-task-reception-outline 
+                        (reify net/IClient 
+                           (net/source [_] (:source faucet))
+                           (net/sink [_] (:sink faucet))
+                           (net/disconnect [_] (w/ebb faucet)))                                                    
+                        ip)))
+        
+        
+        ))))
 
 ;(defn cpu 
 ;  
