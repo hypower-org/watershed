@@ -48,6 +48,8 @@
                                 
                                 (let [result (f x)]
                                   
+                                  (println x)
+                                  
                                   (if result (s/put! output result)) 
                                 
                                   (d/recur (s/take! s)))))))
@@ -283,7 +285,7 @@
    
    {:tributaries [] 
     :sieve (fn [] (s/periodically 1000 (fn [] task-assignment)))
-    :on-ebbed (fn [] (disconnect client))
+    ;:on-ebbed (fn [] (disconnect client))
     :type :source}
    
    :watch 
@@ -310,7 +312,7 @@
   {:monitor 
            
    {:tributaries [] :sieve (fn [] (selector (fn [y] (:monitor (read-string y))) (sink client)))
-    :on-ebbed (fn [] (disconnect client))
+    ;:on-ebbed (fn [] (disconnect client))
     :type :source} 
    
    :aggregator 

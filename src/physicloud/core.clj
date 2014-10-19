@@ -90,9 +90,11 @@
         
         faucet (f/faucet ip (name leader) port (gloss/string :utf-8 :delimiters ["\r\n"]))
         
-        connected (w/flow faucet) ;Do error handling in the future!!!!
+        connected @(w/flow faucet) ;Do error handling in the future!!!!
         
         ]
+    
+    (println connected)
     
     (println "Chosen leader: " leader)
     
