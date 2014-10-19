@@ -209,7 +209,7 @@
             :data-gatherer 
             
             {:tributaries [ip]
-             :sieve (fn [stream] (s/reduce concat (s/map identity stream)))
+             :sieve (fn [stream] (s/reduce (fn [x {:keys [state]}] (concat x [state])) [] (s/map identity stream)))
              :type :estuary}
                
             :providing-monitor 
