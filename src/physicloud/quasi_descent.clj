@@ -206,6 +206,8 @@
   
   [[agent [states control]]]
   
+  (println "Agent-fn: " agent)
+  
   (let [updated (assoc agent :control control :state states)]
   
     (assoc-in updated [:state (:id agent)] (state-step updated step-size))))

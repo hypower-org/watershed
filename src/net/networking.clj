@@ -50,6 +50,8 @@
                                   
                                   (println "Selector: " x)
                                   
+                                  (println "Selector result: " result)
+                                  
                                   (if result (s/put! output result)) 
                                 
                                   (d/recur (s/take! s)))))))
