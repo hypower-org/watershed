@@ -121,26 +121,26 @@
           
           result (if (= leader ip) @(:output (:result (:watershed stage-one))) nil)] 
       
-;      (if (= ip leader) 
-;        (w/ebb network))
+      (if (= ip leader) 
+        (w/ebb network))
       
       ;(w/ebb faucet)
-        
-      (let [bin-fns (zipmap 
+      (when task-assignment      
+        (let [bin-fns (zipmap 
                       
-                      (keys result)
+                        (keys result)
                       
-                      (map (fn [final-value] 
-                             (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)                                                   
-                                                           (* 100 (/ load (:bcps final-value)))) (:idle final-value))]
+                        (map (fn [final-value] 
+                               (fn [load] (let [result (+ (* (/ (- (:max final-value) (:idle final-value)) 100)                                                   
+                                                             (* 100 (/ load (:bcps final-value)))) (:idle final-value))]
                                                   
-                                          (if (< result (:final final-value))
-                                            result))))
+                                            (if (< result (:final final-value))
+                                              result))))
                                                   
-                         (vals result)))
+                           (vals result)))
                             
             
-            task-assignment (if result (bin-pack bin-fns tasks))
+              task-assignment (if result (bin-pack bin-fns tasks))
             
 ;            network (if (= leader ip) 
 ;                      (monitor (reduce (fn [m r] (assoc m r {:edges [leader]}))                                    
@@ -151,15 +151,13 @@
 ;            connected (w/flow faucet)
             
             ]
-        
-        (when task-assignment
           
           (doseq [i respondents]
             (spit (str (name i) ".edn") (mapv #(nth % (.indexOf (vec respondents) i)) @(:output (:data-gatherer (:watershed stage-one))))))
           
           (spit "resulting-power.edn" (reduce (fn [m [k v]] (println ((k bin-fns) (reduce + v))) (println (reduce + v)) (assoc m k ((k bin-fns) (reduce + v)))) {} task-assignment))
         
-          (spit "task-assignment.edn" (reduce (fn [m [k v]] (assoc m k (count v))) {} task-assignment)))
+          (spit "task-assignment.edn" (reduce (fn [m [k v]] (assoc m k (count v))) {} task-assignment))))
 ;        
 ;        (if task-assignment 
 ;          
@@ -181,7 +179,7 @@
 ;                        ip)))
         
         
-        ))))
+        )))
 
 ;(defn cpu 
 ;  
