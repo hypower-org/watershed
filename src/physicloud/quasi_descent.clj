@@ -14,7 +14,7 @@
 (use 'clojure.pprint)
 (use '(incanter core charts))
 
-(def step-size 0.01)
+(def step-size 0.05)
 (def error 0.001)
 
 (defn remove-index
@@ -206,7 +206,7 @@
   
   [[agent [states control]]]
   
-  (println "Agent-fn: " agent)
+  #_(println "Agent-fn: " agent)
   
   (let [updated (assoc agent :control control :state states)]
   
@@ -216,7 +216,7 @@
   
   [agents]     
   
-  (println "Cloud-fn: " agents)
+  #_(println "Cloud-fn: " agents)
   
   (let [aggregate-states (mapv (fn [x] ((:state x) (:id x))) agents)]    
     

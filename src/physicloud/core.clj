@@ -155,7 +155,7 @@
         (when task-assignment
           
           (doseq [i respondents]
-            (spit (str (name i) ".edn") (mapv (comp #(nth % (.indexOf (vec respondents) i)) :state) @(:output (:data-gatherer (:watershed stage-one))))))
+            (spit (str (name i) ".edn") (mapv (comp #(% (nth % (.indexOf (vec respondents) i))) :state) @(:output (:data-gatherer (:watershed stage-one))))))
           
           (spit "resulting-power.edn" (reduce (fn [m [k v]] (println ((k bin-fns) (reduce + v))) (println (reduce + v)) (assoc m k ((k bin-fns) (reduce + v)))) {} task-assignment))
         

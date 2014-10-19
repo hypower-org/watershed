@@ -48,9 +48,9 @@
                                 
                                 (let [result (f x)]
                                   
-                                  (println "Selector: " x)
+                                  #_(println "Selector: " x)
                                   
-                                  (println "Selector result: " result)
+                                  #_(println "Selector result: " result)
                                   
                                   (if result (s/put! output result)) 
                                 
@@ -162,7 +162,7 @@
 
 (defn- final-state-fn 
   [ip [last-state new-agent-state]] 
-  (println "Final State: " new-agent-state)
+  #_(println "Final State: " new-agent-state)
   (let [new ((:state new-agent-state) (:id new-agent-state))
         last (get-in last-state [ip :old])] 
     (if (get-in last-state [ip :final])
@@ -184,7 +184,7 @@
           (reduce (fn [m r]                   
                     (assoc m r 
                            {:tributaries [] 
-                            :sieve (fn [] (selector (fn [y] (println "Gettings stuff:" y) (r (read-string y))) (sink client)))
+                            :sieve (fn [] (selector (fn [y] #_(println "Gettings stuff:" y) (r (read-string y))) (sink client)))
                             :type :source}))                     
                     {} (disj respondents leader))
           
@@ -215,7 +215,7 @@
             :providing-monitor 
                
             {:tributaries [:monitor] 
-             :sieve (fn [stream] (s/connect (s/map (fn [data] (println "Providing monitor: " data) (pr-str {:monitor data})) (s/map identity stream)) (source client)))
+             :sieve (fn [stream] (s/connect (s/map (fn [data] #_(println "Providing monitor: " data) (pr-str {:monitor data})) (s/map identity stream)) (source client)))
              :type :estuary}          
             
             :aggregator 
