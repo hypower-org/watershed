@@ -121,7 +121,7 @@
           
           result (if (= leader ip) @(:output (:result (:watershed stage-one))) nil)] 
       
-      (println @(:output (:result (:watershed stage-one))))
+      (println "derefed!")
       
       (if (= ip leader) 
         (w/ebb network))
