@@ -124,7 +124,7 @@
       (if (= ip leader) 
         (w/ebb network))
       
-      (w/ebb faucet)
+      ;(w/ebb faucet)
         
       (let [bin-fns (zipmap 
                       
