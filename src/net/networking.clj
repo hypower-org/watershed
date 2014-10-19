@@ -206,11 +206,11 @@
              :sieve (fn [& streams] (s/map q/cloud-fn (apply s/zip streams)))
              :type :river}
             
-;            :data-gatherer 
-;            
-;            {:tributaries [ip]
-;             :sieve (fn [stream] (s/reduce concat (s/map identity stream)))
-;             :type :estuary}
+            :data-gatherer 
+            
+            {:tributaries [ip]
+             :sieve (fn [stream] (s/reduce concat (s/map identity stream)))
+             :type :estuary}
                
             :providing-monitor 
                
