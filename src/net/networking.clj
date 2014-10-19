@@ -215,7 +215,7 @@
             :providing-monitor 
                
             {:tributaries [:monitor] 
-             :sieve (fn [stream] (s/connect (s/map (fn [data] (str {:monitor data})) (s/map identity stream)) (source client)))
+             :sieve (fn [stream] (s/connect (s/map (fn [data] (println "Providing monitor: " data) (pr-str {:monitor data})) (s/map identity stream)) (source client)))
              :type :estuary}          
             
             :aggregator 

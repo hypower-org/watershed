@@ -14,7 +14,7 @@
 (use 'clojure.pprint)
 (use '(incanter core charts))
 
-(def step-size 0.1)
+(def step-size 0.01)
 (def error 0.001)
 
 (defn remove-index
@@ -136,7 +136,7 @@
       (let [u+ (control-step agents (:control (first agents)) step)
           
             next-states (doall (mapv (fn [agent] 
-                             
+                                       
                                        (-> 
                                
                                          agent 
@@ -162,7 +162,7 @@
 (def p (-> 
   
          (xy-plot [] [] :legend true :series-label "Agent 1" :x-label "iterations" :y-label "power (w)")
-  
+         
          (add-lines [] [] :series-label "Agent 2")
   
          (add-lines [] [] :series-label "Agent 3")

@@ -121,7 +121,7 @@
           
           result (if (= leader ip) @(:output (:result (:watershed stage-one))) nil)] 
       
-      (if (= ip leader) 
+      (if (== ip leader) 
         (w/ebb network))
       
       (w/ebb faucet)
