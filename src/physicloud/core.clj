@@ -125,7 +125,7 @@
         (w/ebb network))
       
       ;(w/ebb faucet)
-      (when task-assignment      
+      (when result      
         (let [bin-fns (zipmap 
                       
                         (keys result)
