@@ -214,7 +214,7 @@
   
   [agents]     
   
-  (println agents)
+  (println "Cloud-fn: " agents)
   
   (let [aggregate-states (mapv (fn [x] ((:state x) (:id x))) agents)]    
     
