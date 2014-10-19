@@ -121,11 +121,14 @@
           
           result (if (= leader ip) @(:output (:result (:watershed stage-one))) nil)] 
       
+      (println @(:output (:result (:watershed stage-one))))
+      
       (if (= ip leader) 
         (w/ebb network))
       
       ;(w/ebb faucet)
       (when result      
+        (println "when!")
         (let [bin-fns (zipmap 
                       
                         (keys result)
@@ -153,6 +156,7 @@
             ]
           
           (doseq [i respondents]
+            (println "YO!")
             (spit (str (name i) ".edn") (mapv #(nth % (.indexOf (vec respondents) i)) @(:output (:data-gatherer (:watershed stage-one))))))
           
           (spit "resulting-power.edn" (reduce (fn [m [k v]] (println ((k bin-fns) (reduce + v))) (println (reduce + v)) (assoc m k ((k bin-fns) (reduce + v)))) {} task-assignment))

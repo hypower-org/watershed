@@ -215,7 +215,7 @@
             :providing-monitor 
                
             {:tributaries [:monitor] 
-             :sieve (fn [stream] (s/connect (s/map (fn [data] #_(println "Providing monitor: " data) (pr-str {:monitor data})) (s/map identity stream)) (source client)))
+             :sieve (fn [stream] (s/connect (s/map (fn [data] #_(println "Providing monitor: " data) (pr-str {:monitor data})) stream) (source client)))
              :type :estuary}          
             
             :aggregator 
@@ -229,6 +229,12 @@
             {:tributaries [:aggregator]
              :sieve (fn [stream] (s/reduce merge (s/map identity stream)))
              :type :estuary}
+            
+            :watch 
+         
+             {:tributaries [[:final-states]]
+              :sieve (fn [w & streams] (s/consume (partial result-fn w) (apply s/zip streams)))      
+              :type :dam}
             
             ))        
           
@@ -266,11 +272,11 @@
               :group :final-states
               :type :river}        
              
-             :watch 
-         
-             {:tributaries [[:final-states]]
-              :sieve (fn [w & streams] (s/consume (partial result-fn w) (apply s/zip streams)))      
-              :type :dam}
+;             :watch 
+;         
+;             {:tributaries [[:final-states]]
+;              :sieve (fn [w & streams] (s/consume (partial result-fn w) (apply s/zip streams)))      
+;              :type :dam}
              
              ))))          
 
