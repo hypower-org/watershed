@@ -81,15 +81,13 @@
     
     (map (fn [[k v]] 
             
-           {k (dissoc (assoc v :result (/ (:start-time v) (:end-time v))) :start-time :end-time)})
+           [k (:end-time v)])
           
          dfs-result)
     
-    (reduce merge)
+    (sort-by second) 
     
-    (sort-by :result) 
-    
-    (map first) 
+    (map first)
     
     reverse))
   
