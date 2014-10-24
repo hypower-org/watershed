@@ -7,9 +7,10 @@
                  [lamina "0.5.5-SNAPSHOT"]     
                  [incanter "1.5.5"]
                  [net.mikera/core.matrix "0.29.1"]
-                 [manifold "0.1.0-alpha3"]
+                 [manifold "0.1.0-beta3"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [criterium "0.4.3"]
                  [org.clojure/core.match "0.2.1"]
-                 [aleph "0.3.3"]]
+                 [byte-streams "0.2.0-alpha3"]
+                 [aleph "0.4.0-alpha6"]]
   :plugins [[lein-nodisassemble "0.1.3"]])

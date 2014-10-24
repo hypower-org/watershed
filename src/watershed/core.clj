@@ -36,6 +36,10 @@
   [env {:keys [title sieve tributaries]} _ _]  
   (assoc env title (apply sieve (map env tributaries))))
 
+(defmethod parse-outline :dam 
+  [env {:keys [title sieve tributaries]} _ _]
+  (assoc env title (apply sieve (cons (vals env) (map env tributaries)))))
+
 (defmethod parse-outline :aliased 
   [env {:keys [title sieve tributaries]} _ con] 
   (con (apply sieve (map env tributaries)) (title env))
@@ -55,21 +59,6 @@
     (if group 
       (assoc outline :title title :tributaries tributaries :sieve sieve :group group)
       (assoc outline :title title :tributaries tributaries :sieve sieve))))
-
-(def test-outline 
-  [(make-outline :a [:a [:b-group]] (fn 
-                                      ([] [0])
-                                      ([& streams] (s/map (fn [[a]] a) (apply s/zip streams)))))
-   
-   (make-outline :d [:c] (fn [a] a))
-   
-   (make-outline :f [:e] (fn [a] (s/consume #(println "f: " %) (s/map identity a))))
-   
-   (make-outline :e [:d]  (fn [a] a))
-   
-   (make-outline :c [:a] (fn [a] a))
-
-   (make-outline :b [] (fn [] (s/periodically 1000 (fn [] [0]))) :b-group)])
 
 (defn- expand-dependencies
   [groups dependencies]
@@ -151,17 +140,19 @@
                            
                                         ;#### Infer graph types! ####
                            
-                                        (fn [o]                        
-                                          (let [title (:title o)                                
-                                                graph-es (:edges (title graph))                               
-                                                transpose-es (:edges (title transpose))]                            
-                                            (if (empty? graph-es)
-                                              (if (empty? transpose-es)
-                                                (throw (IllegalArgumentException. "You have a node with no dependencies and no dependents..."))
-                                                (assoc o :type :estuary))
-                                              (if (empty? transpose-es)
-                                                (assoc o :type :source) 
-                                                (assoc o :type :river)))))) 
+                                        (fn [o]   
+                                          (if (:type o)
+                                            o
+                                            (let [title (:title o)                                
+                                                  graph-es (:edges (title graph))                               
+                                                  transpose-es (:edges (title transpose))]                            
+                                              (if (empty? graph-es)
+                                                (if (empty? transpose-es)
+                                                  (throw (IllegalArgumentException. "You have a node with no dependencies and no dependents..."))
+                                                  (assoc o :type :estuary))
+                                                (if (empty? transpose-es)
+                                                  (assoc o :type :source) 
+                                                  (assoc o :type :river))))))) 
                          
                                       deps-expanded)])                                 
              
@@ -170,6 +161,8 @@
         sources (filter #(= (:type %) :source) with-deps)
         
         cycles (filter #(= (:type %) :cyclic) with-deps)
+        
+        dams (filter #(= (:type %) :dam) with-deps)
                    
         ;#### First compiler pass... ####
               
@@ -184,7 +177,7 @@
                                   (let [non-cyclic (into {} (map (fn [o] [(:title o) o]) 
                                                                  (remove (fn [o]                 
                                                                            (let [type (:type o)]
-                                                                             (or (= type :cyclic) (= type :source))))                  
+                                                                             (or (= type :cyclic) (= type :source) (= type :dam))))                  
                                                                            with-deps)))]
                                           
                                     (->> 
@@ -194,6 +187,8 @@
                                       g/kahn-sort
                                             
                                       (map non-cyclic)))
+                                  
+                                  dams
                                            
                                   (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
        
@@ -216,7 +211,43 @@
 
     (map (fn [a b] (println b) (assoc a :stream ((:title a) env) :type (:type b))) outlines with-deps)))
                    
-                    
+   
+
+;####  remove this... ####
+
+(def test-outline 
+  [(make-outline :a [:a [:b-group]] (fn 
+                                      ([] [0])
+                                      ([& streams] (s/map (fn [[a]] a) (apply s/zip streams)))))
+   
+   (make-outline :d [:c] (fn [a] a))
+   
+   (make-outline :f [:e] (fn [a] (s/consume #(println "f: " %) (s/map identity a))))
+   
+   {:title :accumulator 
+    :tributaries [:accumulator :a]
+    :sieve (fn 
+             ([] [])
+             ([accumulator a] (s/map (fn [[accum [a]]] (conj accum a)) (s/zip accumulator a))))}
+   
+   (make-outline :printer [:accumulator] (fn [stream] (s/consume #(println "printer: " %) (s/map identity stream))))
+   
+   {:title :watch
+    :tributaries [:accumulator]
+    :sieve (fn [streams stream] 
+             (println "BLAH: "stream streams)
+             (s/consume (fn [val] (println "VAL: " val) 
+                        (when (> (count val) 10) 
+                          (println "CLOSING!") 
+                          (doall (map #(if (s/stream? %) (s/close! %)) streams))))                                                     
+                        (s/map identity stream)))
+    :type :dam}  
+   
+   (make-outline :e [:d]  (fn [a] a))
+   
+   (make-outline :c [:a] (fn [a] a))   
+
+   (make-outline :b [] (fn [] (s/periodically 1000 (fn [] [0]))) :b-group)])                 
   
   
   
