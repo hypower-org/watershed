@@ -1,291 +1,222 @@
 (ns watershed.core
   (:require [clojure.pprint :as p]    
-            [clojure.core.match :as m]
             [manifold.deferred :as d]
             [watershed.graph :as g]
-            [manifold.stream :as s]
-            [lamina.core :as l]))
+            [clojure.set :as st]
+            [manifold.stream :as s]))
 
 (set! *warn-on-reflection* true)
 
-(defprotocol ITide
-  (flow [_])
-  (ebb [_]))
+(defn manifold-step 
+  ([] (s/stream))
+  ([s] (s/close! s))
+  ([s input] (s/put! s input)))
 
-;TODO Implement dynamic add to watershed?  Not the best solution, but it may be required...
+(defn manifold-connect 
+  [in out] 
+  (s/connect in out {:upstream? true}))
 
-(defprotocol IWatershed
-  (supply-graph [_])
-  (isolate [_ reference])
-  (dependents [_ title]))
+(defmulti parse-outline 
+  (fn [env outline step con ]
+    (:type outline)))
 
-(defrecord Waterway [tide title group tributaries output]
-  
-  ITide
-  
-  (flow [_]    
-    (flow ^ITide tide)) 
-  
-  (ebb [_]    
-    (ebb ^ITide tide)))
+(defmethod parse-outline :cyclic
+  [env {:keys [title sieve]} step _]
+  (assoc env title (step)))
 
-(defmethod print-method Waterway [^Waterway o ^java.io.Writer w]
+(defmethod parse-outline :source
+  [env {:keys [title sieve]} step _]
+  (assoc env title (step)))
 
-  (.write w
-      
-    (let [tributaries (:tributaries o)]
-      
-      (str 
-        (if (empty? tributaries)
-          ""
-          (str "|" (:tributaries o) "| ->"))        
-        " " (:title o)       
-        "<" (:group o) ">"       
-        (str " -> " (pr-str (:output o)))))))
+(defmethod parse-outline :estuary
+  [env {:keys [title sieve tributaries]} _ _] 
+  (assoc env title (apply sieve (map env tributaries))))
 
-;Do some matching to create a very efficient waterway.  This function is probably unnecessary lol
+(defmethod parse-outline :river
+  [env {:keys [title sieve tributaries]} _ _]  
+  (assoc env title (apply sieve (map env tributaries))))
 
-(defn- emit-ebb 
-  [output on-ebbed] 
-  (m/match 
-    [(s/stream? output) (fn? on-ebbed)] 
-    [false false] (reify ITide (ebb [_] output))
-    [true false] (reify ITide (ebb [_] (s/close! output)))
-    [false true] (reify ITide (ebb [_] (on-ebbed) output))
-    [true true] (reify ITide (ebb [_] (on-ebbed) (s/close! output)))))
+(defmethod parse-outline :aliased 
+  [env {:keys [title sieve tributaries]} _ con] 
+  (con (apply sieve (map env tributaries)) (title env))
+  env)
 
-(defn- waterway 
-  [{:keys [title group tributaries sieve streams on-ebbed]}] 
-  
-  (let [output (if (empty? streams) (sieve) (apply sieve streams))
-        
-        e (emit-ebb output on-ebbed)] 
-    
-    (->Waterway (reify ITide (flow [_] output) (ebb [_] (ebb ^ITide e))) title group tributaries output)))
+(defmethod parse-outline nil 
+  [env _ _ _ ]
+  env)
 
-(defn- dam 
-  "A special case of the waterway."
-  [{:keys [title group tributaries sieve streams watershed]}]
-  
-  (let [output (if (empty? streams) ((sieve watershed)) (apply sieve (cons watershed streams)))]  
-    
-    (->Waterway (reify ITide (flow [_] output) (ebb [_])) title group tributaries output)))
-            
-;BEING DEVELOPED!
+;Horrible side effects...would be better to find a solution to this!
 
-(defn expand-dependencies
+(def ^:private outline {:title nil :tributaries nil :sieve nil})
+
+(defn make-outline
+  ([title tributaries sieve] (make-outline title tributaries sieve nil))
+  ([title tributaries sieve group]
+    (if group 
+      (assoc outline :title title :tributaries tributaries :sieve sieve :group group)
+      (assoc outline :title title :tributaries tributaries :sieve sieve))))
+
+(def test-outline 
+  [(make-outline :a [:a [:b-group]] (fn 
+                                      ([] [0])
+                                      ([& streams] (s/map (fn [[a]] a) (apply s/zip streams)))))
+   
+   (make-outline :d [:c] (fn [a] a))
+   
+   (make-outline :f [:e] (fn [a] (s/consume #(println "f: " %) (s/map identity a))))
+   
+   (make-outline :e [:d]  (fn [a] a))
+   
+   (make-outline :c [:a] (fn [a] a))
+
+   (make-outline :b [] (fn [] (s/periodically 1000 (fn [] [0]))) :b-group)])
+
+(defn- expand-dependencies
   [groups dependencies]
-  (vec (flatten (map (fn [dependency]                                     
+  (vec (flatten (map (fn [dependency]                
                        (if (vector? dependency)                      
                          (let [[id op & args] dependency] 
-                           (case op 
-                             :only (vec (filter (set args) (id groups)))
-                             :without (vec (remove (set args) (id groups)))
+                           (case op                            
+                             :only (vec (filter (set args) groups))
+                             :without (vec (remove (set args) groups))
                              (id groups)))                                                  
                          dependency))               
                      dependencies))))
 
-(defn- ebb-helper 
-  [watershed] 
-  (let [ks (vec (keys watershed))]        
-      (reduce-kv         
-        (fn [m i v]          
-          (if (record? v)                
-            (let [ret (ebb v)] 
-              (if ret 
-                (assoc m (ks i) ret)
-                m))
-            (ebb-helper v)))  
-        {}        
-        (vec (vals watershed)))))  
+(defn- dependents
+  [outlines t] 
+  (reduce      
+    (fn [coll {:keys [title tributaries]}]              
+      (if (some #{t} tributaries) (conj coll title) coll)) #{} outlines))
 
-(defrecord Watershed [watershed] 
-  
-  ITide
-  
-  (ebb [_]              
-    (ebb-helper watershed))
-  
-  
-  IWatershed
-  
-  (isolate 
-    [_ reference] 
+(defn- make-graph 
+  [outlines] 
+  (reduce (fn [m {:keys [title]}]                      
+            (assoc m title {:edges (dependents outlines title)}))                     
+          {} outlines))
+
+(defn close 
+  "Given a step function, attempt to close all of the streams in the system."
+  [step & outlines] 
+  (let [streams (map :stream outlines)]
+  (if (some nil? outlines)
+    (throw (IllegalArgumentException. "All outlines have not been configured."))
+    (do 
+      (doseq [o outlines]
+        (println o)
+        (println (:type o))
+        (if-not (= (:type o) :estuary) 
+          (step (:stream o))))
+      (zipmap (map :title outlines) (map :stream outlines))))))
     
-    (if (vector? reference) 
-      (let [[group op & args] reference]       
-        (case op 
-          :without (vec (remove (set args) (group watershed)))
-          :only (vec (filter (set args) (group watershed)))
-          (group watershed))
-      (reference watershed))))
+(defn assemble 
+  [step con & outlines] 
   
-  
-  
-  )
-  
-(defn watershed 
-  [system] 
-  (->Watershed system))
- 
-(defn- dependents* 
-  [groups system title] 
-  (reduce-kv      
-    (fn [coll k v]              
-      (if (some #{title} (expand-dependencies groups (:tributaries v))) (cons k coll) coll)) '() system))
-  
-(defn assemble
-  
- [outline & {:keys [pre-existing]}] 
- 
- ;Handle some basic input errors here.  There could be more in the future...e.g., make sure rivers have tributaries0
- 
- (letfn [(handler [x] 
-                  (case x 
-                    :type "No type supplied"
-                    :tributaries "No tributaries supplied"
-                    :sieve "No sieve supplied"))]
-   
-   (doseq [v (vals outline)] 
-     (assert (:type v) (handler :type))
-     (assert (:tributaries v) (handler :tributaries))
-     (assert (:sieve v) (handler :sieve))))
-    
-   (let [groups (reduce-kv 
-                  (fn [m k v]       
-                    (let [group (:group v)]                        
-                      (if group               
-                        (update-in m [group] (fn [x] (conj x k)))
-                        m)))     
-                  {}       
-                  outline)         
-         
-         all-deps (reduce (fn [m k] (update-in m [k] #(expand-dependencies groups (:tributaries %)))) outline (keys outline))
-         
-         dams (reduce-kv (fn [coll k v]                   
-                           (if (= (:type v) :dam)                   
-                             (conj coll k)                   
-                             coll))               
-                         [] outline)          
+  (let [compiler (fn [env o] (parse-outline env o step con))   
+             
+        ;#### Expand dependencies and infer types! ####
         
-         cycles-handled (->>                      
-                           
-                          (let [graph (apply merge (map (fn [x] {x {:edges (dependents* groups outline x)}})                                                       
-                                                        (reduce (fn [coll [k v]]                                      
-                                                                  (let [t (:type v)]
-                                                                    (if (not (or (= t :estuary) (= t :source)))                                  
-                                                                      (conj coll k)        
-                                                                      coll)))                                                      
-                                                                [] 
-                                                                (reduce dissoc outline dams))))]
-
-                            (g/strongly-connected-components graph (g/transpose graph)))      
-                                                
-                          ;Remove singularities with no self-cyclic dependency
-                            
-                          (remove                                  
-                            (fn [x]       
-                              (if (= (count x) 1)       
-                                (let [val (first x)]                              
-                                  (not (val (set (val all-deps))))))))
-                          
-                          ;Flatten all the trees.  They're uncessary for what we want to do...maybe...
-      
-                          flatten
-                         
-                          ;pre-allocate streams for nodes with cyclic dependencies
+        [sccs with-deps] (let [groups (reduce (fn [m {:keys [title group]}] 
+                                                (if group 
+                                                  (update-in m [group] (fn [x] (conj x title))) 
+                                                  m)) 
+                                              {} outlines)
                         
-                          (map 
-      
-                            (fn [cyclic] 
+                               deps-expanded (map (fn [o] (assoc o :tributaries (expand-dependencies groups (:tributaries o)))) outlines) 
+                        
+                               graph (make-graph deps-expanded)
+                        
+                               transpose (g/transpose graph)
+                        
+                               sccs (->>
+                                      
+                                      (g/strongly-connected-components graph (g/transpose graph))                                                                      
+                                                                       
+                                      (remove
+                                        (fn [vals]
+                                          (if (= (count vals) 1)
+                                            (let [val (vals 0)]
+                                            (not (val (:edges (val graph)))))))))
+                        
+                               pred (apply (comp set concat) sccs)]   
+                    
+                           [sccs (map (comp                           
                                    
-                              (let [val (cyclic outline)
-                                    
-                                    ;Alias input streams
+                                        ;#### Tag components in cycles... ####   
+                           
+                                        (fn [o]                            
+                                          (if ((:title o) pred)
+                                            (assoc o :type :cyclic)
+                                            o))
+                           
+                                        ;#### Infer graph types! ####
+                           
+                                        (fn [o]                        
+                                          (let [title (:title o)                                
+                                                graph-es (:edges (title graph))                               
+                                                transpose-es (:edges (title transpose))]                            
+                                            (if (empty? graph-es)
+                                              (if (empty? transpose-es)
+                                                (throw (IllegalArgumentException. "You have a node with no dependencies and no dependents..."))
+                                                (assoc o :type :estuary))
+                                              (if (empty? transpose-es)
+                                                (assoc o :type :source) 
+                                                (assoc o :type :river)))))) 
+                         
+                                      deps-expanded)])                                 
+             
+        ;#### Get the sources and cycles for future reference! ####
+        
+        sources (filter #(= (:type %) :source) with-deps)
+        
+        cycles (filter #(= (:type %) :cyclic) with-deps)
+                   
+        ;#### First compiler pass... ####
+              
+        env (reduce compiler {} (concat 
+          
+                                  sources 
+                
+                                  cycles 
+                
+                                  ;#### Do a topological sort on the remaining nodes #### 
                                   
-                                    streams (repeatedly (count (cyclic all-deps)) s/stream)
-                                    
-                                    ;I need to create an output so I can initialize it...unfortunate
-                                   
-                                    output (s/stream)
-                                   
-                                    eddy (waterway (merge val {:streams streams :title cyclic}))]    
-                                
-                                ;Causes side effects :'(
-                               
-                                (s/connect (:output eddy) output)
-        
-                                {cyclic {:streams streams :eddy (assoc eddy :output output)}})))                        
+                                  (let [non-cyclic (into {} (map (fn [o] [(:title o) o]) 
+                                                                 (remove (fn [o]                 
+                                                                           (let [type (:type o)]
+                                                                             (or (= type :cyclic) (= type :source))))                  
+                                                                           with-deps)))]
+                                          
+                                    (->> 
+                                            
+                                      (make-graph (vals non-cyclic))
+                                            
+                                      g/kahn-sort
+                                            
+                                      (map non-cyclic)))
+                                           
+                                  (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
+       
+    ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
       
-                          (apply merge))
-         
-         cycles-handled-ks (keys cycles-handled)
-        
-         system-connected (let [active (concat cycles-handled-ks dams (keys pre-existing))
-                                
-                                all-deps (reduce dissoc all-deps active)
-                                
-                                outline (reduce dissoc outline active)
-                                
-                                started (merge (reduce (fn [m k] (update-in m [k] :eddy)) cycles-handled cycles-handled-ks) pre-existing)
-                                
-                                start-order (fn [state current-order]
-                                                (if (empty? state)
-                                                  current-order
-                                                  (let [possible (reduce-kv 
-                                                                   (fn [x y deps]                                               
-                                                                     (if (or (empty? deps) (every? (set (concat current-order active)) deps)) (conj x y) x)) [] state)]
-                                                    (recur (reduce dissoc state possible)
-                                                           (reduce conj current-order possible)))))]
-   
-                            (reduce (fn [started cur]    
-                                      (let [r (cur outline)]       
-                                        (assoc started cur (waterway (merge r {:title cur :streams (map (comp :output started) (cur all-deps))})))))            
-                                    started                          
-                                    (vec (reverse (start-order all-deps nil)))))]
+    (def check-closed env)
     
-     ;connect cyclic elements to non-cyclic elements.  Side effecty. Ewww
+    (doseq [o (mapcat              
+                (fn [scc-group]         
+                  (let [max-deps (reduce (fn [max o]                   
+                                           (if (> (count (:tributaries o)) (count (:tributaries max)))
+                                             o
+                                             max))                            
+                                         (filter (comp (set scc-group) :title) cycles))]        
+                    (filter (comp (set (:tributaries max-deps)) :title) cycles)))          
+                sccs)]    
+      (step ((:title o) env) ((:sieve o))))
     
-     (doall (map (fn [cyclic]           
-                   (doall (map (fn [x y] (s/connect x y)) 
-                               (map (comp :output system-connected)                                                               
-                                    (cyclic all-deps)) (:streams (cyclic cycles-handled)))))            
-                 cycles-handled-ks))
-     
-     ;There's a potential problem here...there may some messages passed through the system before the dam gets access to them...should I fix this?
-    
-     (let [watershed (reduce-kv           
-                       ;watershed cardinal dam 
-                       (fn [w i d]   
-                         (let [dam-key (dams i)]
-                           (assoc-in
-                             w [:watershed dam-key]                      
-                             (dam (merge d {:title dam-key :streams (map (comp :output system-connected) (dam-key all-deps)) :watershed w})))))         
-                       (watershed              
-                         (reduce-kv 
-                           (fn [m k v]   
-                             (let [group (:group v)]
-                               (if group
-                                 (assoc-in m [group k] v)
-                                 (assoc m k v))))                
-                           {}
-                           system-connected))                          
-                       (mapv outline dams))]
-      
-       (doseq [c cycles-handled-ks] 
-      
-         ;Get the system rolling...could probably do this more effectively.  For right now, just put initial values into cycles
-		      
-         (if-let [initial-value (:initial (c outline))]
-      
-           (s/put! (:output (c system-connected)) initial-value)))
-     
-       watershed)))
-  
-  
-  
-  
-  
+    ;#### Associate streams back into the outlines! ####
+
+    (map (fn [a b] (println b) (assoc a :stream ((:title a) env) :type (:type b))) outlines with-deps)))
+                   
+                    
   
   
   
