@@ -99,6 +99,14 @@
   (reduce (fn [m {:keys [title]}]                      
             (assoc m title {:edges (dependents outlines title)}))                     
           {} outlines))
+
+(defn close 
+  "Given a step function, attempt to close all of the streams in the system."
+  [step & outlines] 
+  (let [streams (map :stream outlines)]
+  (if (some nil? outlines)
+    (throw (IllegalArgumentException. "All outlines have not been configured."))
+    (map step streams))))
     
 (defn assemble 
   [step con & outlines] 
