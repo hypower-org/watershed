@@ -10,19 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-;What does a channel transducer look like...?
-
-(defn ^:private base-xform 
-  "The idea here is to slot the channel creation function into the transducer..."
-  [step] 
-  (fn    
-    ([] (step))  
-    ([result] (step result))    
-    ([result input]
-      (if input
-        (step result input)
-        (step result)))))
-
 (defn manifold-step 
   ([] (s/stream))
   ([s] (s/close! s))
@@ -36,8 +23,6 @@
   (fn [env outline step con ]
     (:type outline)))
 
-#_{:type :source :stream << ... >>, :title :data}
-
 (defmethod parse-outline :cyclic
   [env {:keys [title sieve]} step _]
   (assoc env title (step)))
@@ -46,23 +31,19 @@
   [env {:keys [title sieve]} step _]
   (assoc env title (step)))
 
-#_{:type :estuary :sieve (fn [& streams]) :title :end-of-shed}
-
 (defmethod parse-outline :estuary
   [env {:keys [title sieve tributaries]} _ _] 
   (assoc env title (apply sieve (map env tributaries))))
 
-#_{:type :river :sieve (fn [& streams]) :gen s/map :title :transform!}
-
 (defmethod parse-outline :river
   [env {:keys [title sieve tributaries]} _ _]  
+  (println env)
+  (println tributaries)
   (assoc env title (apply sieve (map env tributaries))))
 
 (defmethod parse-outline nil 
   [env _ _ _ ]
   env)
-
-#_{:type :aliased :sieve (fn [& streams])}
 
 ;Horrible side effects...would be better to find a solution to this!
 
@@ -71,38 +52,29 @@
   (con (apply sieve (map env tributaries)) (title env))
   env)
 
+(def ^:private outline {:title nil :tributaries nil :sieve nil})
+
+(defn make-outline
+  ([title tributaries sieve] (make-outline title tributaries sieve nil))
+  ([title tributaries sieve group]
+    (if group 
+      (assoc outline :title title :tributaries tributaries :sieve sieve :group group)
+      (assoc outline :title title :tributaries tributaries :sieve sieve))))
+
 (def test-outline 
-  [{:tributaries [:a [:b-group]]
-    :title :a
-    :sieve (fn 
-             ([] [0])
-             ([& streams] (println streams) (s/map (fn [[a]] a) (apply s/zip streams))))
-    :type :river}   
-       
-    {:title :d 
-     :sieve (fn [a] a)
-     :tributaries [:c]
-     :type :river}
-    
-    {:title :f
-     :sieve (fn [a] (s/consume #(println "f: " %) (s/map identity a)))
-     :tributaries [:e]
-     :type :estuary}
-        
-    {:title :e 
-     :sieve (fn [a] a)
-     :tributaries [:d]
-     :type :river}
+  [(make-outline :a [:a [:b-group]] (fn 
+                                      ([] [0])
+                                      ([& streams] (println streams) (s/map (fn [[a]] a) (apply s/zip streams)))))
    
-   {:title :c 
-    :sieve (fn [a] a)
-    :type :river
-    :tributaries [:a]}
+   (make-outline :d [:c] (fn [a] a))
    
-   {:sieve (fn [] (s/periodically 1000 (fn [] [0])))
-    :title :b
-    :group :b-group
-    :type :source}])
+   (make-outline :f [:e] (fn [a] (s/consume #(println "f: " %) (s/map identity a))))
+   
+   (make-outline :e [:d]  (fn [a] a))
+   
+   (make-outline :c [:a] (fn [a] a))
+
+   (make-outline :b [] (fn [] (s/periodically 1000 (fn [] [0]))) :b-group)])
 
 (defn- expand-dependencies
   [groups dependencies]
@@ -121,102 +93,113 @@
   (reduce      
     (fn [coll {:keys [title tributaries]}]              
       (if (some #{t} tributaries) (conj coll title) coll)) #{} outlines))
+
+(defn- make-graph 
+  [outlines] 
+  (reduce (fn [m {:keys [title]}]                      
+            (assoc m title {:edges (dependents outlines title)}))                     
+          {} outlines))
     
 (defn assemble 
   [step con & outlines] 
   
-  ;COMPILE ORDER: rivers/estuaries/dams -> sources
-  
-  (let [        
+  (let [compiler (fn [env o] (parse-outline env o step con))   
+             
+        ;#### Expand dependencies and infer types! ####
         
-        ;TODO. type inference!!!! 
-        
-        ;#### Expand dependencies... #### 
-        
-        with-deps (let [groups (reduce (fn [m {:keys [title group]}] 
-                                         (if group 
-                                           (update-in m [group] (fn [x] (conj x title))) 
-                                           m)) 
-                                       {} outlines)]
+        [sccs with-deps] (let [groups (reduce (fn [m {:keys [title group]}] 
+                                                (if group 
+                                                  (update-in m [group] (fn [x] (conj x title))) 
+                                                  m)) 
+                                              {} outlines)
                         
-                        (map (fn [o] (assoc o :tributaries (expand-dependencies groups (:tributaries o)))) outlines))
-        
-        compiler (fn [env o] (parse-outline env o step con))                 
-                   
-        ;#### Resolve cycles...I only need to worry about rivers here! ####
-        
-        ;TODO: do better picking of sccs!
-        
-        sccs (let [graph (reduce (fn [m {:keys [title]}]                      
-                                          (assoc m title {:edges (dependents with-deps title)}))                     
-                                        {} (filter #(= (:type %) :river) with-deps))]
-               (->>
-                                           
-                   ;#### Gather strongly-connected components and remove singularities! ####
-      
-                   (g/strongly-connected-components graph (g/transpose graph))
-      
-                   (remove        
-                     (fn [vals]
-                       (if (= (count vals) 1)       
-                         (let [val (vals 0)]                              
-                           (not (val (:edges (val graph))))))))))
-        
-        ;#### Tag components in cycles... ####
-        
-        with-deps (let [pred (apply (comp set concat) sccs)]                     
-                      (map (fn [o]                            
-                             (if ((:title o) pred)
-                               (assoc o :type :cyclic)
-                               o))                                        
-                           with-deps))      
+                               deps-expanded (map (fn [o] (assoc o :tributaries (expand-dependencies groups (:tributaries o)))) outlines) 
+                        
+                               graph (make-graph deps-expanded)
+                        
+                               transpose (g/transpose graph)
+                        
+                               sccs (->>
+                                      
+                                      (g/strongly-connected-components graph (g/transpose graph))                                                                      
+                                                                       
+                                      (remove
+                                        (fn [vals]
+                                          (if (= (count vals) 1)
+                                            (let [val (vals 0)]
+                                            (not (val (:edges (val graph)))))))))
+                        
+                               pred (apply (comp set concat) sccs)]   
+                    
+                           [sccs (map (comp                           
+                                   
+                                        ;#### Tag components in cycles... ####   
+                           
+                                        (fn [o]                            
+                                          (if ((:title o) pred)
+                                            (assoc o :type :cyclic)
+                                            o))
+                           
+                                        ;#### Infer graph types! ####
+                           
+                                        (fn [o]                        
+                                          (let [title (:title o)                                
+                                                graph-es (:edges (title graph))                               
+                                                transpose-es (:edges (title transpose))]                            
+                                            (if (empty? graph-es)
+                                              (if (empty? transpose-es)
+                                                (throw (IllegalArgumentException. "You have a node with no dependencies and no dependents..."))
+                                                (assoc o :type :estuary))
+                                              (if (empty? transpose-es)
+                                                (assoc o :type :source) 
+                                                (assoc o :type :river)))))) 
+                         
+                                      deps-expanded)])                                 
              
         ;#### Get the sources and cycles for future reference! ####
         
         sources (filter #(= (:type %) :source) with-deps)
         
         cycles (filter #(= (:type %) :cyclic) with-deps)
-        
-        ;#### First compiler pass... ####
-        
-        env (let [graph (-> 
-                           
-                          ;#### Create graph... ####
-                           
-                          (reduce (fn [m {:keys [title]}]                      
-                                               (assoc m title {:edges (dependents with-deps title)}))                     
-                                             {} with-deps)
-                           
-                          ;#### Create starting point.  Essentially, where all the sources in the graph point ####
-                           
-                          (assoc ::init {:edges (reduce (fn [coll o] (if (= (:type o) :source) (conj coll (:title o)) coll)) #{} with-deps)}))
                    
-                  helper (fn this [env current]                 
-                           (let [o (some (fn [x] (if (= (:title x) current) x)) with-deps)]                         
-                             (if (current env)
-                               env
-                               (if (or (= (:type o) :source) (= (:type o) :cyclic))
-                                 (reduce this (compiler env o) (:edges (current graph)))
-                                 (if (every? (set (keys env)) (:tributaries o))
-                                   (reduce this (compiler env o) (:edges (current graph)))
-                                   env)))))]
-                             
-              ;#### Second, and final, compilation pass!
+        ;#### First compiler pass... ####
               
-              (reduce compiler (helper {} ::init) (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))] 
+        env (reduce compiler {} (concat 
           
+                                  sources 
+                
+                                  cycles 
+                
+                                  ;#### Do a topological sort on the remaining nodes #### 
+                                  
+                                  (let [non-cyclic (into {} (map (fn [o] [(:title o) o]) 
+                                                                 (remove (fn [o]                 
+                                                                           (let [type (:type o)]
+                                                                             (or (= type :cyclic) (= type :source))))                  
+                                                                           with-deps)))]
+                                          
+                                    (->> 
+                                            
+                                      (make-graph (vals non-cyclic))
+                                            
+                                      g/kahn-sort
+                                            
+                                      (map non-cyclic)))
+                                           
+                                  (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
+       
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
       
     (doseq [o (mapcat              
-            (fn [scc-group]         
-              (let [max-deps (reduce (fn [max o]                   
-                               (if (> (count (:tributaries o)) (count (:tributaries max)))
-                                 o
-                                 max))                            
-                             (filter (comp (set scc-group) :title) cycles))]        
-                (filter (comp (set (:tributaries max-deps)) :title) cycles)))          
-            sccs)]    
-        (step ((:title o) env) ((:sieve o))))
+                (fn [scc-group]         
+                  (let [max-deps (reduce (fn [max o]                   
+                                           (if (> (count (:tributaries o)) (count (:tributaries max)))
+                                             o
+                                             max))                            
+                                         (filter (comp (set scc-group) :title) cycles))]        
+                    (filter (comp (set (:tributaries max-deps)) :title) cycles)))          
+                sccs)]    
+      (step ((:title o) env) ((:sieve o))))
     
     ;#### Associate streams back into the outlines! ####
       
