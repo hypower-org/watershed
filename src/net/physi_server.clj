@@ -105,7 +105,7 @@
                 
                            w/manifold-connect 
                 
-                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message (nippy/freeze (u/cpu-units)) 
+                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message #_(nippy/freeze 1000000.0) (nippy/freeze (u/cpu-units)) 
                                                                                             :host "10.10.10.255"
                                                                                             :port port}))))
                 
@@ -128,11 +128,14 @@
     
     (reduce (fn [max [k v]]  
               (let [v' (defrost (:message v))]
+                (println v')
+                (println max)
                  (if (> v' max)
                    (do 
+                     (println "reset on " v')
                      (reset! leader k)
-                     v'))
-                 max))            
+                     v')
+                   max)))            
             -1            
             @(apply w/output :result system))
     [@leader (map name (keys @(apply w/output :result system)))]))      
@@ -166,7 +169,7 @@
                                                      #_(println "responses: " responses)                                                    
                                                      #_(println connections)                                                    
                                                        (doall (map (fn [client connected-to]      
-                                                                     #_(println "Connecting " client " to " connected-to)
+                                                                     (println "Connecting " client " to " connected-to)
                                                                      (doall (map #(s/connect (get server (:ip %)) (get server client)) connected-to)))                                                         
                                                                    cs
                                                                                                                
@@ -187,9 +190,10 @@
         
         (assoc :system (->>
         
-                         (concat (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet] 
-                                                                                              (let [[data val] (defrost packet)]
-                                                                                                (if (= data r) val))) stream)))) 
+                         (concat (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet]                                                                                              
+                                                                                              (let [[sndr val] (defrost packet)]
+                                                                                                (println "selec: " sndr val)
+                                                                                                (if (= sndr r) val))) stream)))) 
                                       requires) 
               
                                  (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
@@ -198,8 +202,9 @@
                    
                                       provides))
         
-                         (cons (w/outline :out [:client [:data-out]] (fn [client & streams] (doseq [s streams] 
-                                                                                              (s/connect s client)))))
+                         (cons (w/outline :out [:client [:data-out]] (fn [client & streams] 
+                                                                       (doseq [s streams] 
+                                                                         (s/connect s client)))))
         
                          (cons (w/outline :client [] (fn [] client))))))))
 
