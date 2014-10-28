@@ -189,7 +189,7 @@
         
                          (concat (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet] 
                                                                                               (let [[data val] (defrost packet)]
-                                                                                                (if (= data r) val)) stream))))) 
+                                                                                                (if (= data r) val))) stream)))) 
                                       requires) 
               
                                  (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
