@@ -77,8 +77,10 @@
 (defn- watch-fn   
   [streams accumulation expected] 
   (when (>= (count (keys accumulation)) expected)   
-    (Thread/sleep 5000) ;Do something better than this in the future...
-    (doall (map #(if (s/stream? %) (s/close! %)) streams))))
+    ;EW. Do something better than this in the future...
+    (future
+      (Thread/sleep 5000)
+      (doall (map #(if (s/stream? %) (s/close! %)) streams)))))
 
 (defn elect-leader 
   
@@ -88,13 +90,24 @@
   
   (let [leader (atom nil)
         
-        socket @(udp/socket {:port port :broadast? true})
+        socket @(udp/socket {:port port :broadcast? true})
+        
+        msg (do 
+              
+              (println(let [split (butlast (clojure.string/split "10.10.10.5" #"\."))]
+                       (str (clojure.string/join (interleave split (repeat (count split) "."))) "255")))
+              
+              {:message (nippy/freeze (u/cpu-units)) :port port 
+               :host (let [split (butlast (clojure.string/split "10.10.10.5" #"\."))]
+                       (str (clojure.string/join (interleave split (repeat (count split) "."))) "255"))})
         
         system (w/assemble w/manifold-step
                 
                            w/manifold-connect 
                 
-                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message (nippy/freeze (u/cpu-units)) :port port :host ip}))))
+                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message (nippy/freeze (u/cpu-units)) 
+                                                                                            :host "10.10.10.255"
+                                                                                            :port port}))))
                 
                            (w/outline :connect [:broadcast] (fn [stream] (s/connect stream socket)))
                          

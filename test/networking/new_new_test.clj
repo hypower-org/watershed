@@ -2,6 +2,7 @@
   (:require [watershed.core :as w]
             [net.physi-server :as n]
             [manifold.stream :as s]
+            [aleph.udp :as udp]
             [manifold.deferred :as d]))
 
 (defn start
@@ -17,6 +18,4 @@
                                                          (cons (w/outline :getting [(first requires)] (fn [stream] (s/consume #(println "getting: " %) stream))))
                                                          
                                                          )))
-
-
 
