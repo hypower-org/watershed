@@ -5,9 +5,7 @@
             [byte-streams :as b]
             [watershed.core :as w]
             [aleph.udp :as udp]
-            [watershed.utils :as u]
-            ))
-
+            [watershed.utils :as u]))
 
 ;(def server (tcp/start-server (fn [a b] (s/connect a a)) {:port 10000}))
 ;
@@ -16,6 +14,13 @@
 ;(s/consume #(println (b/convert % String)) client)
 ;
 ;(s/put! client (pr-str {:hi 1}))
+;
+;(def test-sock (udp/socket {:port 8999 :broadcast? true}))
+;
+;(def test-sock @test-sock)
+;
+;(s/put! test-sock {:message "hi" :host "localhost" :port 8999})
+
 
 (defn- acc-fn  
   [[accumulation new]] 
@@ -24,87 +29,47 @@
 (defn- watch-fn   
   [streams accumulation expected] 
   (when (>= (count (keys accumulation)) expected)   
-    (Thread/sleep 5000) ;Do something better than this...
+    (Thread/sleep 5000) ;Do something better than this in the future...
     (doall (map #(if (s/stream? %) (s/close! %)) streams))))
 
 (defn elect-leader 
-  [number-of-neighbors & {:keys [duration interval port] :or {duration 5000 interval 1000 port 8999}}]
+  [ip number-of-neighbors & {:keys [duration interval port] :or {duration 5000 interval 1000 port 8999}}]
   
-  (d/let-flow [leader (atom nil)
+  (let [leader (atom nil)
         
-               socket (udp/socket {:port port :broadast true})]
-    
-    (w/assemble w/manifold-step
+        socket @(udp/socket {:port port :broadast? true})
+        
+        system (w/assemble w/manifold-step
                 
-                w/manifold-connect 
+                           w/manifold-connect 
                 
-                (w/make-outline :broadcast [] (fn [] (s/periodically interval (fn [] (pr-str (u/cpu-units))))))
+                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message (pr-str (u/cpu-units)) :port port :host ip}))))
                 
-                (w/make-outline :socket [:broadcast] (fn [stream] (s/connect stream socket)))
+                           (w/outline :connect [:broadcast] (fn [stream] (s/connect stream socket)))
+                         
+                           (w/outline :socket [] (fn [] (s/map (fn [x] (hash-map (:host x) x)) socket)))
                 
-                (w/make-outline :result [:broadcast] (fn [x] (s/reduce merge (s/map identity x))))
+                           (w/outline :result [:socket] (fn [x] (s/reduce merge (s/map identity x))))
                 
-                (w/make-outline :accumulator [:accumulator :socket] 
+                           (w/outline :accumulator [:accumulator :socket] 
                                 
-                                (fn 
-                                  ([] {})
-                                  ([& streams] (s/map acc-fn (apply s/zip streams)))))
+                                           (fn 
+                                             ([] {})
+                                             ([& streams] (s/map acc-fn (apply s/zip streams)))))
                 
-                {:title :watch
-                 :tributaries [:accumulator]
-                 :sieve (fn [streams stream] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream))) 
-                 :type :dam})))                                                      
-
-;(defn elect-leader 
-;  
-;  [neighbors & {:keys [duration interval port] :or {duration 5000 interval 1000 port 8999}}]
-;  
-;  (let [leader (atom nil)
-;        
-;        g @(-> 
-;        
-;             (g/geyser port (gloss/string :utf-8))
-;            
-;             w/flow)       
-;        
-;        watershed (-> 
-;                    
-;                    {:broadcast {:tributaries [] 
-;                                 :sieve (fn [] (s/periodically interval (fn [] {:host "10.10.10.255" :port port :message (str (u/cpu-units))})))
-;                                 :type :source}
-;                     
-;                    :geyser {:tributaries [:broadcast] 
-;                             :sieve (fn [x] (s/connect x (:source g)) (s/map (fn [y] {(keyword (:host y)) y}) (:sink g)))
-;                             :type :river}                   
-;                    
-;                    :result {:tributaries [:geyser] 
-;                             :sieve (fn [x] (s/reduce merge (s/map identity x)))
-;                             :type :estuary}
-;                    
-;                    :accumulator {:tributaries [:accumulator :geyser] 
-;                                  :sieve (fn [& streams] (s/map acc-fn (apply s/zip streams)))
-;                                  :initial {}
-;                                  :type :river}
-;                    
-;                    :watch {:tributaries [:accumulator] 
-;                            :sieve (fn [w stream] (s/consume #(watch-fn w % neighbors) (s/map identity stream)))                           
-;                            :type :dam}}         
-;                                                                    
-;                    (w/assemble))]
-;    
-;    (reduce-kv (fn [max k v] (let [cpu-power (read-string (:message v))] 
-;                             
-;                               (if (> cpu-power max)       
-;                               
-;                                 (do 
-;                                   (reset! leader k)
-;                                   cpu-power)
-;                               
-;                                 max)))
-;                               
-;               0
-;                               
-;               @(:output (:result (:watershed watershed))))
-;  
-;    {:leader @leader :respondents (keys @(:output (:result (:watershed watershed))))}))
+                           {:title :watch
+                            :tributaries [:accumulator]
+                            :sieve (fn [streams stream] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream))) 
+                            :type :dam})]
+    
+    (reduce (fn [max [k v]]  
+              (let [v' (read-string (b/convert (:message v) String))]
+                 (if (> v' max)
+                   (do 
+                     (reset! leader k)
+                     v'))
+                 max))            
+            -1            
+            @(apply w/output :result system))
+    @leader))       
 

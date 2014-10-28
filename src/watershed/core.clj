@@ -51,15 +51,6 @@
 
 ;Horrible side effects...would be better to find a solution to this!
 
-(def ^:private outline {:title nil :tributaries nil :sieve nil})
-
-(defn make-outline
-  ([title tributaries sieve] (make-outline title tributaries sieve nil))
-  ([title tributaries sieve group]
-    (if group 
-      (assoc outline :title title :tributaries tributaries :sieve sieve :group group)
-      (assoc outline :title title :tributaries tributaries :sieve sieve))))
-
 (defn- expand-dependencies
   [groups dependencies]
   (vec (flatten (map (fn [dependency]                
@@ -84,6 +75,8 @@
             (assoc m title {:edges (dependents outlines title)}))                     
           {} outlines))
 
+;This is probably unnecessary
+
 (defn close 
   "Given a step function, attempt to close all of the streams in the system."
   [step & outlines] 
@@ -97,9 +90,24 @@
         (if-not (= (:type o) :estuary) 
           (step (:stream o))))
       (zipmap (map :title outlines) (map :stream outlines))))))
+
+
+(let [o {:title nil :tributaries nil :sieve nil}]
+  (defn outline
+    ([title tributaries sieve] (outline title tributaries sieve nil))
+    ([title tributaries sieve group]
+      (if group 
+        (assoc o :title title :tributaries tributaries :sieve sieve :group group)
+        (assoc o :title title :tributaries tributaries :sieve sieve)))))
     
 (defn assemble 
   [step con & outlines] 
+  
+  ;Implement some checks...
+  
+  (let [ts (map :title outlines)]
+    (println ts)
+    (assert (= (count ts) (count (distinct ts))) "Each outline must have a distinct name!"))
   
   (let [compiler (fn [env o] (parse-outline env o step con))   
              
@@ -148,7 +156,7 @@
                                                   transpose-es (:edges (title transpose))]                            
                                               (if (empty? graph-es)
                                                 (if (empty? transpose-es)
-                                                  (throw (IllegalArgumentException. "You have a node with no dependencies and no dependents..."))
+                                                  (throw (IllegalArgumentException. (str "You have a node, " title ", with no dependencies and no dependents...")))
                                                   (assoc o :type :estuary))
                                                 (if (empty? transpose-es)
                                                   (assoc o :type :source) 
@@ -194,7 +202,7 @@
        
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
       
-    (def check-closed env)
+    #_(def check-closed env)
     
     (doseq [o (mapcat              
                 (fn [scc-group]         
@@ -209,45 +217,12 @@
     
     ;#### Associate streams back into the outlines! ####
 
-    (map (fn [a b] (println b) (assoc a :stream ((:title a) env) :type (:type b))) outlines with-deps)))
-                   
-   
+    (map (fn [a b] (assoc a :output ((:title a) env) :type (:type b))) outlines with-deps)))
 
-;####  remove this... ####
-
-(def test-outline 
-  [(make-outline :a [:a [:b-group]] (fn 
-                                      ([] [0])
-                                      ([& streams] (s/map (fn [[a]] a) (apply s/zip streams)))))
-   
-   (make-outline :d [:c] (fn [a] a))
-   
-   (make-outline :f [:e] (fn [a] (s/consume #(println "f: " %) (s/map identity a))))
-   
-   {:title :accumulator 
-    :tributaries [:accumulator :a]
-    :sieve (fn 
-             ([] [])
-             ([accumulator a] (s/map (fn [[accum [a]]] (conj accum a)) (s/zip accumulator a))))}
-   
-   (make-outline :printer [:accumulator] (fn [stream] (s/consume #(println "printer: " %) (s/map identity stream))))
-   
-   {:title :watch
-    :tributaries [:accumulator]
-    :sieve (fn [streams stream] 
-             (println "BLAH: "stream streams)
-             (s/consume (fn [val] (println "VAL: " val) 
-                        (when (> (count val) 10) 
-                          (println "CLOSING!") 
-                          (doall (map #(if (s/stream? %) (s/close! %)) streams))))                                                     
-                        (s/map identity stream)))
-    :type :dam}  
-   
-   (make-outline :e [:d]  (fn [a] a))
-   
-   (make-outline :c [:a] (fn [a] a))   
-
-   (make-outline :b [] (fn [] (s/periodically 1000 (fn [] [0]))) :b-group)])                 
+(defn output 
+  "Retrieves the output of a given body" 
+  [title & outlines]  
+  (:output (first (filter #(= (:title %) title) outlines))))                
   
   
   
