@@ -168,9 +168,9 @@
                                                                                    responses))]       
                                                      #_(println "responses: " responses)                                                    
                                                      #_(println connections)                                                    
-                                                       (doall (map (fn [client connected-to]      
-                                                                     (println "Connecting " client " to " connected-to)
-                                                                     (doall (map #(s/connect (get server (:ip %)) (get server client)) connected-to)))  
+                                                       (doall (map (fn [c connected-to]      
+                                                                     (println "Connecting " connected-to " to " c)
+                                                                     (doall (map #(s/connect (get server (:ip %)) (get server c)) connected-to)))  
                                                                    
                                                                    cs                      
                                                                    
@@ -204,10 +204,9 @@
                                       provides))
         
                          (cons (w/outline :out [:client [:data-out]] (fn 
-                                                                       [client & streams] 
-                                                                       (println client streams)
+                                                                       [c & streams] 
                                                                        (doseq [s streams] 
-                                                                         (s/connect s client)))))
+                                                                         (s/connect s c)))))
         
                          (cons (w/outline :client [] (fn [] client))))))))
 
