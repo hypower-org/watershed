@@ -201,8 +201,6 @@
                                   (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
        
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
-      
-    #_(def check-closed env)
     
     (doseq [o (mapcat              
                 (fn [scc-group]         

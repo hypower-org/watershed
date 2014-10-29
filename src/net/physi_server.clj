@@ -92,22 +92,15 @@
         
         socket @(udp/socket {:port port :broadcast? true})
         
-        msg (do 
-              
-              (println(let [split (butlast (clojure.string/split "10.10.10.5" #"\."))]
-                       (str (clojure.string/join (interleave split (repeat (count split) "."))) "255")))
-              
-              {:message (nippy/freeze (u/cpu-units)) :port port 
-               :host (let [split (butlast (clojure.string/split "10.10.10.5" #"\."))]
-                       (str (clojure.string/join (interleave split (repeat (count split) "."))) "255"))})
+        msg {:message (nippy/freeze (u/cpu-units)) :port port 
+             :host (let [split (butlast (clojure.string/split "10.10.10.5" #"\."))]
+                     (str (clojure.string/join (interleave split (repeat (count split) "."))) "255"))}
         
         system (w/assemble w/manifold-step
                 
                            w/manifold-connect 
                 
-                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message (nippy/freeze (u/cpu-units)) 
-                                                                                            :host "10.10.10.255"
-                                                                                            :port port}))))
+                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] msg))))
                 
                            (w/outline :connect [:broadcast] (fn [stream] (s/connect stream socket)))
                          
@@ -128,11 +121,8 @@
     
     (reduce (fn [max [k v]]  
               (let [v' (defrost (:message v))]
-                (println v')
-                (println max)
                  (if (> v' max)
                    (do 
-                     (println "reset on " v')
                      (reset! leader k)
                      v')
                    max)))            
@@ -193,7 +183,6 @@
                
                (let [rs (let [rs' (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet]                                                                                              
                                                                                                 (let [[sndr val] (defrost packet)]
-                                                                                                  (println "selec: " sndr val)
                                                                                                   (if (= sndr r) val))) stream)))) 
                                         requires)]
                           (if (empty? rs') 
