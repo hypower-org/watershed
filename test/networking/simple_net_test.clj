@@ -10,7 +10,7 @@
   (if arg 
     (do
       (def c (n/physi-client {:host "10.10.10.5"}))
-      (def s @(net.physi-server {} "10.10.10.5" "10.10.10.5"))
+      (def s @(n/physi-server {} "10.10.10.5" "10.10.10.5"))
       (def c @c))
     (def c @(n/physi-client {:host "10.10.10.3"}))))
     
