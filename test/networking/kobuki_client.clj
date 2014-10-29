@@ -9,11 +9,13 @@
 
 (def robot (KobukiRobot. "/dev/ttyUSB0"))
 
-(def kobuki-client 
-  (apply w/assemble w/manifold-step  w/manifold-connect       
-         (cons   
-           (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream)))    
-           (:system (n/cpu {:requires [:control-data] :provides [] :ip "10.10.10.3" :neighbors 2})))))
+(defn -main
+  [ip]
+  (def kobuki-client 
+    (apply w/assemble w/manifold-step  w/manifold-connect       
+           (cons   
+             (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream)))    
+             (:system (n/cpu {:requires [:control-data] :provides [] :ip ip :neighbors 2}))))))
 
 
 

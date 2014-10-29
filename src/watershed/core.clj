@@ -106,7 +106,6 @@
   ;Implement some checks...
   
   (let [ts (map :title outlines)]
-    (println ts)
     (assert (= (count ts) (count (distinct ts))) "Each outline must have a distinct name!"))
   
   (let [compiler (fn [env o] (parse-outline env o step con))   
