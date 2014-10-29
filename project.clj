@@ -10,6 +10,8 @@
                  [manifold "0.1.0-beta3"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [criterium "0.4.3"]
+                 [jkobuki "1.1.0"]
+                 [org.scream3r/jssc "2.8.0"]
                  [com.taoensso/nippy "2.7.0"]
                  [org.clojure/core.match "0.2.1"]
                  [byte-streams "0.2.0-alpha3"]

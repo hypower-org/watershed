@@ -201,7 +201,7 @@
                                   (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
        
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
-    
+      
     (doseq [o (mapcat              
                 (fn [scc-group]         
                   (let [max-deps (reduce (fn [max o]                   
