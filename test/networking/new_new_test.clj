@@ -15,7 +15,7 @@
                                                          (:system test-cpu)
 	    
                                                          (cons (w/outline (first provides) [] (fn [] (s/periodically 1000 (fn [] :system-one)))))
-                                                         (cons (w/outline :getting [(first requires)] (fn [stream] (s/consume #(println "getting: " %) stream))))
+                                                         (cons (w/outline :getting [(first requires)] (fn [stream] (s/consume #(println "getting: " %) 
+                                                                                                                              (s/map identity stream)))))
                                                          
                                                          )))
-

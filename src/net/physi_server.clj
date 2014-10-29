@@ -105,7 +105,7 @@
                 
                            w/manifold-connect 
                 
-                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message #_(nippy/freeze 1000000.0) (nippy/freeze (u/cpu-units)) 
+                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] {:message (nippy/freeze (u/cpu-units)) 
                                                                                             :host "10.10.10.255"
                                                                                             :port port}))))
                 
@@ -170,9 +170,10 @@
                                                      #_(println connections)                                                    
                                                        (doall (map (fn [client connected-to]      
                                                                      (println "Connecting " client " to " connected-to)
-                                                                     (doall (map #(s/connect (get server (:ip %)) (get server client)) connected-to)))                                                         
-                                                                   cs
-                                                                                                               
+                                                                     (doall (map #(s/connect (get server (:ip %)) (get server client)) connected-to)))  
+                                                                   
+                                                                   cs                      
+                                                                   
                                                                    (reduce (fn [coll c]   
                                                                              #_(println c)
                                                                              (conj coll (filter (fn [x] 
@@ -202,7 +203,9 @@
                    
                                       provides))
         
-                         (cons (w/outline :out [:client [:data-out]] (fn [client & streams] 
+                         (cons (w/outline :out [:client [:data-out]] (fn 
+                                                                       [client & streams] 
+                                                                       (println client streams)
                                                                        (doseq [s streams] 
                                                                          (s/connect s client)))))
         
