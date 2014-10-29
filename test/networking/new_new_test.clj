@@ -3,6 +3,7 @@
             [net.physi-server :as n]
             [manifold.stream :as s]
             [aleph.udp :as udp]
+            [taoensso.nippy :as nippy]
             [manifold.deferred :as d]))
 
 (defn start

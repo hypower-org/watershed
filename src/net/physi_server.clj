@@ -180,7 +180,7 @@
                                                                                                   (some (set (:requires (find-first #(= c (:ip %)) connections))) (:provides x)))                          
                                                                                                 connections)))                                                      
                                                                            []                                                          
-                                                                           cs))))))))   
+                                                                           cs))))))))     
     
       (-> 
       
@@ -189,26 +189,31 @@
             (assoc ret :server server)
             ret))
         
-        (assoc :system (->>
-        
-                         (concat (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet]                                                                                              
-                                                                                              (let [[sndr val] (defrost packet)]
-                                                                                                (println "selec: " sndr val)
-                                                                                                (if (= sndr r) val))) stream)))) 
-                                      requires) 
-              
-                                 (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                         (fn [stream] (s/map (fn [x] (nippy/freeze [p x])) stream))                                     
-                                                         :data-out)) 
+        (assoc :system 
+               
+               (let [rs (let [rs' (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet]                                                                                              
+                                                                                                (let [[sndr val] (defrost packet)]
+                                                                                                  (println "selec: " sndr val)
+                                                                                                  (if (= sndr r) val))) stream)))) 
+                                        requires)]
+                          (if (empty? rs') 
+                            rs'
+                            (cons (w/outline :client [] (fn [] client)) rs')))
+                     
+                     ps (let [ps' (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
+                                                           (fn [stream] (s/map (fn [x] (nippy/freeze [p x])) stream))                                     
+                                                           :data-out)) 
                    
-                                      provides))
-        
-                         (cons (w/outline :out [:client [:data-out]] (fn 
-                                                                       [c & streams] 
-                                                                       (doseq [s streams] 
-                                                                         (s/connect s c)))))
-        
-                         (cons (w/outline :client [] (fn [] client))))))))
+                                        provides)]
+                          (if (empty? ps')
+                            ps' 
+                            (cons (w/outline :out [[:data-out]] (fn 
+                                                                 [& streams] 
+                                                                 (doseq [s streams] 
+                                                                   (s/connect s client)))) 
+                                  ps')))]
+                 
+                 (concat rs ps))))))
 
   
   
