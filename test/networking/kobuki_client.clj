@@ -5,12 +5,12 @@
             [aleph.udp :as udp]
             [taoensso.nippy :as nippy]
             [manifold.deferred :as d])
-  (:import [edu.ycp.robotics KobukiRobot]))
-
-(def robot (KobukiRobot. "/dev/ttyUSB0"))
+  (:import [edu.ycp.robotics KobukiRobot])
+  (:gen-class))
 
 (defn -main
   [ip]
+  (def robot (KobukiRobot. "/dev/ttyUSB0"))
   (def kobuki-client 
     (apply w/assemble w/manifold-step  w/manifold-connect       
            (cons   
