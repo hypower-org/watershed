@@ -134,6 +134,8 @@
   [pred coll] 
   (first (filter pred coll)))
 
+;Check to see if network is still cyclic...
+
 (defn cpu 
   [{:keys [requires provides ip port neighbors] :or {port 10000}}]
   {:pre [(some? requires) (some? provides) (some? neighbors)]}
@@ -200,9 +202,25 @@
                                                                  [& streams] 
                                                                  (doseq [s streams] 
                                                                    (s/connect s client)))) 
-                                  ps')))]
+                                  ps')))
+                     
+;                     hb (if (= leader ip)
+;                          (w/outline :heartbeat [:client] (fn [stream] (s/periodically 750 (fn [] (nippy/freeze [:heartbeat])))) :data-out)
+;                          '())
+                     
+                     ]
                  
-                 (concat rs ps))))))
+                 (->>
+                   
+                   (concat rs ps)
+                   
+                   ;heartbeat outline
+                   
+                   ;status
+                   
+                   
+                   
+                   ))))))
 
   
   
