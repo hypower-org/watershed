@@ -256,7 +256,7 @@
                                   :heartbeat-status 
                                   [:heartbeat-receive]                      
                                   (fn [stream]                         
-                                    (take-within identity stream 750 {:connection-status ::disconnected!})))
+                                    (take-within identity stream 5000 {:connection-status ::disconnected!})))
                                              
                                 (w/outline
                                   :system-status
