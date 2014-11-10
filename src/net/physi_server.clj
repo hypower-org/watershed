@@ -238,33 +238,31 @@
                      
                      hb-cl (if (= leader ip)
                              []                           
-                             [(cons (w/outline :heartbeat []
-                                      (fn [] (s/periodically 750 (fn [] [:heartbeat])))
-                                      :data-out))
-                   
-                              (cons (w/outline :heartbeat-receive 
-                                               [:client]
-                                               (fn [stream] 
-                                                 (selector (fn [packet]                                                                                              
-                                                             (let [[sndr] (defrost packet)]
-                                                               (if (= sndr :heartbeat-received)                                                                   
-                                                                 (do
-                                                                   (println "Got heartbeat on client!")
-                                                                   {:connection-status :okay})))) stream))))
-                                                     
-                              (cons                     
+                             [(w/outline :heartbeat []
+                                (fn [] (s/periodically 750 (fn [] [:heartbeat])))
+                                :data-out)
+                              
+                              (w/outline :heartbeat-receive 
+                                         [:client]
+                                         (fn [stream] 
+                                           (selector (fn [packet]                                                                                              
+                                                       (let [[sndr] (defrost packet)]
+                                                         (if (= sndr :heartbeat-received)                                                                   
+                                                           (do
+                                                             (println "Got heartbeat on client!")
+                                                             {:connection-status :okay})))) stream)))
+                                                                                                   
                                 (w/outline 
                                   :heartbeat-status 
                                   [:heartbeat-receive]                      
                                   (fn [stream]                         
-                                    (take-within identity stream 750 {:connection-status ::disconnected!}))))
-                   
-                              (cons 
+                                    (take-within identity stream 750 {:connection-status ::disconnected!})))
+                                             
                                 (w/outline
                                   :system-status
                                   ;Change this to get a bunch of data...
                                   [:heartbeat-status]
-                                  (fn [stream] (s/reduce merge stream))))])
+                                  (fn [stream] (s/reduce merge stream)))])
                      
                      ]               
                  
