@@ -178,7 +178,8 @@
     (if server      
       (let [woserver (dissoc server ::cleanup)        
             cs (keys woserver)
-            ss (vals woserver)]    
+            ss (vals woserver)]          
+        
         @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
                                                    (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
                                                                                                                             (defrost r)))))                                                                
@@ -201,7 +202,12 @@
                                                                                                   (some (set (:requires (find-first #(= c (:ip %)) connections))) (:provides x)))                          
                                                                                                 connections)))                                                      
                                                                            []                                                          
-                                                                           cs))))))))     
+                                                                           cs))))))
+        
+        (doseq [c cs]
+          (println c)
+          (if-not (= c ip)
+            (s/connect (get server c) (get server ip))))))     
     
       (-> 
       
@@ -227,8 +233,9 @@
                      
                      hb-resp (if (= leader ip)
                                [(w/outline :heartbeat-respond [:client]                                       
-                                           (fn [stream] (selector (fn [packet]                                                                                              
+                                           (fn [stream] (selector (fn [packet]                                                                          
                                                                     (let [[sndr] (defrost packet)]
+                                                                      (println "HBR: sndr")
                                                                       (if (= sndr :heartbeat)                                                                   
                                                                         (do
                                                                           (println "Got heartbeat on server!")
