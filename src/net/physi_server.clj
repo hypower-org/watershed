@@ -64,11 +64,36 @@
          (d/loop           
            [v (s/take! s)]          
            (d/chain v (fn [x] (if (s/closed? output)                                
-                                (s/close! s)                              
-                                (let [result (pred x)]                                  
-                                  (if result (s/put! output result)) 
-                                  (d/recur (s/take! s)))))))        
+                                (s/close! s)                                                              
+                                (if (nil? x)
+                                  (s/close! output)
+                                  (do
+                                    (let [result (pred x)]                                  
+                                      (if result (s/put! output result))) 
+                                    (d/recur (s/take! s))))))))        
          output))
+
+(defn take-within 
+  [fn' stream timeout default] 
+  (let [s (s/map identity stream)
+        output (s/stream)]    
+    (d/loop
+      [v (d/timeout! (s/take! s) timeout default)]
+      (d/chain v (fn [x] 
+                   (println "TW: " x)
+                   (if (s/closed? output)
+                     (s/close! s)
+                     (if (nil? x)
+                       (s/close! output)
+                       (if (= x default)
+                         (do                        
+                           (s/put! output default)
+                           (s/close! s)
+                           (s/close! output))                        
+                         (do
+                           (s/put! output (fn' x))
+                           (d/recur (d/timeout! (s/take! s) timeout default)))))))))
+    output))
 
 (defn- acc-fn  
   [[accumulation new]] 
@@ -162,7 +187,11 @@
                                                      #_(println connections)                                                    
                                                        (doall (map (fn [c connected-to]      
                                                                      (println "Connecting " connected-to " to " c)
-                                                                     (doall (map #(s/connect (get server (:ip %)) (get server c)) connected-to)))  
+                                                                     (doall (map #(s/connect
+                                                                             
+                                                                                    (get server (:ip %)) 
+                                                                                                                                                                                                                                                 
+                                                                                    (get server c)) connected-to)))  
                                                                    
                                                                    cs                      
                                                                    
@@ -187,38 +216,78 @@
                                                                                                 (let [[sndr val] (defrost packet)]
                                                                                                   (if (= sndr r) val))) stream)))) 
                                         requires)]
-                          (if (empty? rs') 
-                            rs'
-                            (cons (w/outline :client [] (fn [] client)) rs')))
+                          rs')
                      
                      ps (let [ps' (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                           (fn [stream] (s/map (fn [x] (nippy/freeze [p x])) stream))                                     
+                                                           (fn [stream] (s/map (fn [x] [p x]) stream))                                     
                                                            :data-out)) 
                    
                                         provides)]
-                          (if (empty? ps')
-                            ps' 
-                            (cons (w/outline :out [[:data-out]] (fn 
-                                                                 [& streams] 
-                                                                 (doseq [s streams] 
-                                                                   (s/connect s client)))) 
-                                  ps')))
+                          ps')
                      
-;                     hb (if (= leader ip)
-;                          (w/outline :heartbeat [:client] (fn [stream] (s/periodically 750 (fn [] (nippy/freeze [:heartbeat])))) :data-out)
-;                          '())
+                     hb-resp (if (= leader ip)
+                               [(w/outline :heartbeat-respond [:client]                                       
+                                           (fn [stream] (selector (fn [packet]                                                                                              
+                                                                    (let [[sndr] (defrost packet)]
+                                                                      (if (= sndr :heartbeat)                                                                   
+                                                                        (do
+                                                                          (println "Got heartbeat on server!")
+                                                                          [:heartbeat-received])))) stream))                               
+                                           :data-out)]
+                               [])
                      
-                     ]
+                     hb-cl (if (= leader ip)
+                             []                           
+                             [(cons (w/outline :heartbeat []
+                                      (fn [] (s/periodically 750 (fn [] [:heartbeat])))
+                                      :data-out))
+                   
+                              (cons (w/outline :heartbeat-receive 
+                                               [:client]
+                                               (fn [stream] 
+                                                 (selector (fn [packet]                                                                                              
+                                                             (let [[sndr] (defrost packet)]
+                                                               (if (= sndr :heartbeat-received)                                                                   
+                                                                 (do
+                                                                   (println "Got heartbeat on client!")
+                                                                   {:connection-status :okay})))) stream))))
+                                                     
+                              (cons                     
+                                (w/outline 
+                                  :heartbeat-status 
+                                  [:heartbeat-receive]                      
+                                  (fn [stream]                         
+                                    (take-within identity stream 750 {:connection-status ::disconnected!}))))
+                   
+                              (cons 
+                                (w/outline
+                                  :system-status
+                                  ;Change this to get a bunch of data...
+                                  [:heartbeat-status]
+                                  (fn [stream] (s/reduce merge stream))))])
+                     
+                     ]               
                  
                  (->>
                    
-                   (concat rs ps)
+                   (concat rs ps hb-resp hb-cl)
                    
-                   ;heartbeat outline
+                   (cons (w/outline :client [] (fn [] client)))
                    
-                   ;status
+                   (cons (w/outline :out 
+                                    [[:data-out]] 
+                                    (fn 
+                                      [& streams] 
+                                      (doseq [s streams]                                               
+                                        (s/connect-via
+                                          s                                           
+                                          (fn [x]                                                                                                    
+                                            (when-not (= (type x) B-ary)
+                                              (println "data: " x)
+                                              (s/put! client (nippy/freeze x))))  
+                                          client)))))
                    
-                   
+                                                                                        
                    
                    ))))))
 

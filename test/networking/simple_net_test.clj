@@ -8,6 +8,8 @@
 (defn -main
   [ip requires provides]
   
+  ;Provide initial data.
+  
   (let [sys (:system (n/cpu {:ip ip :neighbors 2 :requires [requires] :provides [provides]}))]
     
     (->>
