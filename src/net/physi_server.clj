@@ -29,23 +29,20 @@
   
   (assert (some? host) "A host IP address must be specified.")  
   
-;  (let [c-data {:host host :port port}]
-;    (d/loop [c (->                         
-;                 (tcp/client c-data)                         
-;                 (d/timeout! (+ interval 500) nil))]          
-;       (d/chain
-;         c
-;         (fn [x] 
-;           (if x
-;             x    
-;             (do 
-;               (println "Connecting...")
-;               (d/recur (-> 
-;                          (tcp/client c-data)
-;                          (d/timeout! (+ interval 500) nil)))))))))  
-  
-(tcp/client {:host host :port port}) 
-)
+  (let [c-data {:host host :port port}]
+    (d/loop [c (->                         
+                 (tcp/client c-data)                         
+                 (d/timeout! (+ interval 500) nil))]          
+       (d/chain
+         c
+         (fn [x] 
+           (if x
+             x    
+             (do 
+               (println "Connecting...")
+               (d/recur (-> 
+                          (tcp/client c-data)
+                          (d/timeout! (+ interval 500) nil))))))))))
 
 (defn physi-server  
   "Creates a PhysiCloud server that waits for the given clients to connect."
