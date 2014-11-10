@@ -262,7 +262,7 @@
                                   :system-status
                                   ;Change this to get a bunch of data...
                                   [:heartbeat-status]
-                                  (fn [stream] (s/reduce merge stream)))])
+                                  (fn [stream] (s/reduce merge (s/map identity stream))))])
                      
                      ]               
                  
