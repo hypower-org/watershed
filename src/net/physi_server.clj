@@ -206,8 +206,11 @@
         
         (doseq [c cs]
           (println c)
-          (if-not (= c ip)
-            (s/connect (get server c) (get server ip))))))     
+          (when-not (= c ip)
+            (s/connect (get server ip) (get server c))
+            (s/connect (get server c) (get server ip))))
+        
+        ))     
     
       (-> 
       
@@ -246,7 +249,7 @@
                      hb-cl (if (= leader ip)
                              []                           
                              [(w/outline :heartbeat []
-                                (fn [] (s/periodically 750 (fn [] [:heartbeat])))
+                                (fn [] (s/periodically 5000 (fn [] [:heartbeat])))
                                 :data-out)
                               
                               (w/outline :heartbeat-receive 
@@ -263,7 +266,7 @@
                                   :heartbeat-status 
                                   [:heartbeat-receive]                      
                                   (fn [stream]                         
-                                    (take-within identity stream 5000 {:connection-status ::disconnected!})))
+                                    (take-within identity stream 20000 {:connection-status ::disconnected!})))
                                              
                                 (w/outline
                                   :system-status
