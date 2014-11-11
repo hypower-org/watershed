@@ -229,18 +229,18 @@
         
         (assoc :system 
                
-               (let [rs (let [rs' (map (fn [r] (w/outline r [:client] (fn [stream] (selector (fn [packet]                                                                                              
-                                                                                                (let [[sndr val] (defrost packet)]
-                                                                                                  (if (= sndr r) val))) stream)))) 
-                                        requires)]
-                          rs')
+               (let [rs (map (fn [r] (w/outline r [:client] (fn [stream] 
+                                                              (selector (fn [packet]                                                                                              
+                                                                          (let [[sndr val] (defrost packet)]
+                                                                            (println "rec: " sndr val)
+                                                                            (if (= sndr r) val))) stream)))) 
+                             requires)
                      
-                     ps (let [ps' (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                           (fn [stream] (s/map (fn [x] [p x]) stream))                                     
-                                                           :data-out)) 
+                     ps (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
+                                                (fn [stream] (s/map (fn [x] [p x]) stream))                                     
+                                                :data-out)) 
                    
-                                        provides)]
-                          ps')
+                             provides)
                      
                      hb-resp (if (= leader ip)
                                [(w/outline :heartbeat-respond [:client]                                       
