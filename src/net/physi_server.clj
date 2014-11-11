@@ -166,6 +166,10 @@
 
 ;Check to see if network is still cyclic...
 
+(defn cleanup 
+  [system]
+  ((:server (::cleanup system))))
+
 (defn cpu 
   [{:keys [requires provides ip port neighbors] :or {port 10000}}]
   {:pre [(some? requires) (some? provides) (some? neighbors)]}

@@ -10,7 +10,9 @@
   
   ;Provide initial data.
   
-  (loop [sys (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
+  (loop [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
+         
+         sys (:system t-sys)
         
          c-sys (->>
       
@@ -25,6 +27,8 @@
         (println status))
       
       (when (and status (= (:connection-status @(:output status)) :net.physi-server/disconnected))
+        (println t-sys)
+        (n/cleanup t-sys)
         (println "Connection lost!  Reconnecting...")
         (recur (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
                (->>
