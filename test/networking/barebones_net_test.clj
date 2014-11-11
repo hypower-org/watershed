@@ -21,11 +21,9 @@
     
     (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
       
-      (if status
-        @(:stream status))
-    
-    
-    
+      (when status
+        (println status)
+        @(:stream status)))
     
     
     ))
