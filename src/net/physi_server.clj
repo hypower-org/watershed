@@ -82,8 +82,8 @@
     (d/loop
       [v (d/timeout! (s/take! s) timeout default)]
       (d/chain v (fn [x] 
-                   (println "TW: " x)
-                   (println output)
+                   #_(println "TW: " x)
+                   #_(println output)
                    (if (s/closed? output)
                      (s/close! s)
                      (if (nil? x)
@@ -214,7 +214,6 @@
                                                                            cs))))))
         
         (doseq [c cs]
-          (println c)
           (when-not (= c ip)
             (s/connect (get server ip) (get server c))
             (s/connect (get server c) (get server ip))))
@@ -247,10 +246,9 @@
                                [(w/outline :heartbeat-respond [:client]                                       
                                            (fn [stream] (selector (fn [packet]                                                                          
                                                                     (let [[sndr] (defrost packet)]
-                                                                      (println "HBR: sndr")
                                                                       (if (= sndr :heartbeat)                                                                   
                                                                         (do
-                                                                          (println "Got heartbeat on server!")
+                                                                          #_(println "Got heartbeat on server!")
                                                                           [:heartbeat-received])))) stream))                               
                                            :data-out)]
                                [])
@@ -268,7 +266,7 @@
                                                        (let [[sndr] (defrost packet)]
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
-                                                             (println "Got heartbeat on client!")
+                                                             #_(println "Got heartbeat on client!")
                                                              {:connection-status ::connected})))) stream)))
                                                                                                    
                               (w/outline 
@@ -280,7 +278,7 @@
                                :tributaries [:heartbeat-status]
                                :sieve (fn [streams stream] 
                                         (s/consume (fn [x] 
-                                                     (println "HBW: " x)
+                                                     #_(println "HBW: " x)
                                                      (if (= (:connection-status x) ::disconnected)
                                                        (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
                                                stream))
@@ -309,7 +307,7 @@
                                           s                                           
                                           (fn [x]                                                                                                    
                                             (when-not (= (type x) B-ary)
-                                              (println "data: " x)
+                                              #_(println "data: " x)
                                               (s/put! client (nippy/freeze x))))  
                                           client)))))
                    
