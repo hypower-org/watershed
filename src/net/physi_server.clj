@@ -197,11 +197,11 @@
                                                      #_(println connections)                                                    
                                                        (doall (map (fn [c connected-to]      
                                                                      (println "Connecting " connected-to " to " c)
-                                                                     (doall (map #(s/connect
-                                                                             
-                                                                                    (get server (:ip %)) 
-                                                                                                                                                                                                                                                 
-                                                                                    (get server c)) connected-to)))  
+                                                                     (doall (map (fn [x]
+                                                                                   (if-not (or (= (:ip x) leader) (= leader c))
+                                                                                     (s/connect (get server (:ip x)) (get server c)))) 
+                                                                                 
+                                                                                 connected-to)))  
                                                                    
                                                                    cs                      
                                                                    
