@@ -15,7 +15,7 @@
   
   (def robot (KobukiRobot. "/dev/ttyUSB0"))
   
-  (loop [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
+  (loop [t-sys (n/cpu {:ip ip :neighbors 2 :requires [:control-data] :provides []})
          
          sys (cons   
                (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) (s/map identity stream))))    
