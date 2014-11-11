@@ -27,8 +27,6 @@
         (println status))
       
       (when (and status (= (:connection-status @(:output status)) :net.physi-server/disconnected))
-        (println t-sys)
-        (n/cleanup t-sys)
         (println "Connection lost!  Reconnecting...")
         (let [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
               sys (:system t-sys)]
