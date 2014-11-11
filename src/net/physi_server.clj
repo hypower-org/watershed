@@ -25,14 +25,14 @@
       (throw (IllegalStateException. (str "Unexpected client, " client-info ", tried to connect to the server."))))))
 
 (defn physi-client 
-  [{:keys [host port interval] :or {port 10000 interval 750}}]
+  [{:keys [host port interval] :or {port 10000 interval 2000}}]
   
   (assert (some? host) "A host IP address must be specified.")  
   
   (let [c-data {:host host :port port}]
     (d/loop [c (->                         
                  (tcp/client c-data)                         
-                 (d/timeout! (+ interval 500) nil))]          
+                 (d/timeout! interval nil))]          
        (d/chain
          c
          (fn [x] 
@@ -42,7 +42,7 @@
                (println "Connecting...")
                (d/recur (-> 
                           (tcp/client c-data)
-                          (d/timeout! (+ interval 500) nil))))))))))
+                          (d/timeout! interval nil))))))))))
 
 (defn physi-server  
   "Creates a PhysiCloud server that waits for the given clients to connect."
@@ -195,10 +195,10 @@
                                                                                    responses))]       
                                                      #_(println "responses: " responses)                                                    
                                                      #_(println connections)                                                    
-                                                       (doall (map (fn [c connected-to]      
-                                                                     (println "Connecting " connected-to " to " c)
+                                                       (doall (map (fn [c connected-to]                                                                        
                                                                      (doall (map (fn [x]
-                                                                                   (if-not (or (= (:ip x) leader) (= leader c))
+                                                                                   (when-not (or (= (:ip x) leader) (= leader c))
+                                                                                     (println "Connecting " connected-to " to " c)
                                                                                      (s/connect (get server (:ip x)) (get server c)))) 
                                                                                  
                                                                                  connected-to)))  

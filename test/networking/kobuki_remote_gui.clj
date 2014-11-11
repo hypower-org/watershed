@@ -73,13 +73,15 @@
 
 (defn -main 
   [ip]
-  (def remote-system    
-    (apply w/assemble w/manifold-step w/manifold-connect
-           (cons                              
+  (let [total-system (n/cpu {:ip ip :neighbors 2 :requires [] :provides [:control-data]})]
+    (def t-sys total-system)
+    (def remote-system    
+      (apply w/assemble w/manifold-step w/manifold-connect
+             (cons                              
            
-             (w/outline :control-data [] (fn [] s))
+               (w/outline :control-data [] (fn [] s))
            
-             (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides [:control-data]}))))))
+               (:system total-system))))))
 
 
 
