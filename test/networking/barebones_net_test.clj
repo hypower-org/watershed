@@ -23,7 +23,7 @@
       
       (when status
         (println status)
-        @(:stream status)))
+        @(:output status)))
     
     
     ))
