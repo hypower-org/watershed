@@ -274,8 +274,10 @@
                               {:title :heartbeat-watch
                                :tributaries [:heartbeat-status]
                                :sieve (fn [streams stream] 
-                                        (s/map (fn [x] (if (= (:connection-status x) ::disconnected)
-                                                         (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
+                                        (s/map (fn [x] 
+                                                 (println x)
+                                                 (if (= (:connection-status x) ::disconnected)
+                                                   (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
                                                stream))
                                :type :dam}
                                              
