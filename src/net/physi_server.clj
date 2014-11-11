@@ -307,7 +307,7 @@
                                           s                                           
                                           (fn [x]                                                                                                    
                                             (when-not (= (type x) B-ary)
-                                              #_(println "data: " x)
+                                              (println "data: " x)
                                               (s/put! client (nippy/freeze x))))  
                                           client)))))
                    
