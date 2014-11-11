@@ -290,7 +290,9 @@
                                  ;Change this to get a bunch of data...
                                  [:heartbeat-status]
                                  (fn [stream] (s/reduce merge (s/map identity stream))))]
-                             [])
+                             [(w/outline :heartbeat []
+                                 (fn [] (s/periodically 5000 (fn [] [:heartbeat])))
+                                 :data-out)])
                      
                      ]               
                  
