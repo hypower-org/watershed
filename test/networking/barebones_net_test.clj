@@ -24,7 +24,7 @@
       (when status
         (println status))
       
-      (when (= @(:output status) :net.physi-server/disconnected)
+      (when (and status (= (:connection-status @(:output status)) :net.physi-server/disconnected))
         (println "Connection lost!  Reconnecting...")
         (recur (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
                (->>
