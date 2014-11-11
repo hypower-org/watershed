@@ -10,12 +10,24 @@
   
   ;Provide initial data.
   
-  (let [sys (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))]
+  (let [sys (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
+        
+        c-sys (->>
+      
+                sys
+      
+                (apply w/assemble w/manifold-step w/manifold-connect))]
     
-    (->>
+    
+    (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
       
-      sys
-      
-      (apply w/assemble w/manifold-step w/manifold-connect))))
+      (if status
+        @(:stream status))
+    
+    
+    
+    
+    
+    ))
     
 

@@ -82,18 +82,19 @@
     (d/loop
       [v (d/timeout! (s/take! s) timeout default)]
       (d/chain v (fn [x] 
-                   (println "TW: " x)
                    (if (s/closed? output)
                      (s/close! s)
                      (if (nil? x)
-                       (s/close! output)
+                       (do
+                         (s/put! output default)
+                         (s/close! output))
                        (if (= x default)
                          (do                        
                            (s/put! output default)
                            (s/close! s)
                            (s/close! output))                        
                          (do
-                           (s/put! output (fn' x))
+                           (s/put! output (fn' x)) 
                            (d/recur (d/timeout! (s/take! s) timeout default)))))))))
     output))
 
@@ -157,7 +158,7 @@
             @(apply w/output :result system))
     [@leader (map name (keys @(apply w/output :result system)))]))      
 
-(defn- find-first
+(defn find-first
   [pred coll] 
   (first (filter pred coll)))
 
@@ -262,19 +263,27 @@
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
                                                              (println "Got heartbeat on client!")
-                                                             {:connection-status :okay})))) stream)))
+                                                             {:connection-status ::connected})))) stream)))
                                                                                                    
-                                (w/outline 
-                                  :heartbeat-status 
-                                  [:heartbeat-receive]                      
-                                  (fn [stream]                         
-                                    (take-within identity stream 20000 {:connection-status ::disconnected!})))
+                              (w/outline 
+                                :heartbeat-status 
+                                [:heartbeat-receive]                      
+                                (fn [stream]                         
+                                  (take-within identity stream 20000 {:connection-status ::disconnected})))
+                              
+                              {:title :heartbeat-watch
+                               :tributaries [:heartbeat-status]
+                               :sieve (fn [streams stream] 
+                                        (s/map (fn [x] (if (= (:connection-status x) ::disconnected)
+                                                         (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
+                                               stream))
+                               :type :dam}
                                              
-                                (w/outline
-                                  :system-status
-                                  ;Change this to get a bunch of data...
-                                  [:heartbeat-status]
-                                  (fn [stream] (s/reduce merge (s/map identity stream))))])
+                              (w/outline
+                                :system-status
+                                ;Change this to get a bunch of data...
+                                [:heartbeat-status]
+                                (fn [stream] (s/reduce merge (s/map identity stream))))])
                      
                      ]               
                  
