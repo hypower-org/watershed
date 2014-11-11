@@ -30,11 +30,16 @@
         (println t-sys)
         (n/cleanup t-sys)
         (println "Connection lost!  Reconnecting...")
-        (recur (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
-               (->>
-      
+        (let [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
+              sys (:system t-sys)]
+          (recur t-sys
+          
                  sys
+               
+                 (->>
       
-                 (apply w/assemble w/manifold-step w/manifold-connect)))))))
+                   sys
+      
+                   (apply w/assemble w/manifold-step w/manifold-connect))))))))
     
 
