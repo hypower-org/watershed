@@ -82,6 +82,7 @@
     (d/loop
       [v (d/timeout! (s/take! s) timeout default)]
       (d/chain v (fn [x] 
+                   (println "TW: " x)
                    (if (s/closed? output)
                      (s/close! s)
                      (if (nil? x)
