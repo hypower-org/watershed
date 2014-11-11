@@ -16,7 +16,7 @@
                  [com.taoensso/nippy "2.7.0"]
                  [org.clojure/core.match "0.2.1"]
                  [byte-streams "0.2.0-alpha3"]
-                 [aleph "0.4.0-alpha7"]]
+                 [aleph "0.4.0-alpha9"]]
   :plugins [[lein-nodisassemble "0.1.3"]]
   :main networking.beagle-bone-client
   :aot [networking.beagle-bone-client])
