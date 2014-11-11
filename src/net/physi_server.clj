@@ -248,7 +248,7 @@
                                                                     (let [[sndr] (defrost packet)]
                                                                       (if (= sndr :heartbeat)                                                                   
                                                                         (do
-                                                                          #_(println "Got heartbeat on server!")
+                                                                          (println "Got heartbeat on server!")
                                                                           [:heartbeat-received])))) stream))                               
                                            :data-out)]
                                [])
@@ -266,7 +266,7 @@
                                                        (let [[sndr] (defrost packet)]
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
-                                                             #_(println "Got heartbeat on client!")
+                                                             (println "Got heartbeat on client!")
                                                              {:connection-status ::connected})))) stream)))
                                                                                                    
                               (w/outline 
