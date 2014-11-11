@@ -15,10 +15,10 @@
   
   (def robot (KobukiRobot. "/dev/ttyUSB0"))
   
-  (loop [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
+  (loop [t-sys (n/cpu {:ip ip :neighbors 2 :requires [:control-data] :provides []})
          
          sys (cons   
-               (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream)))    
+               (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) (s/map identity stream))))    
                (:system t-sys))
         
          c-sys (->>
@@ -35,10 +35,12 @@
       
       (when (and status (= (:connection-status @(:output status)) :net.physi-server/disconnected))
         (println "Connection lost!  Reconnecting...")
-        (let [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
+        (let [t-sys (n/cpu {:ip ip :neighbors 2 :requires [:control-data] :provides []})
+              
               sys (cons   
-                    (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream)))    
+                    (w/outline :controller [:control-data] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) (s/map identity stream))))    
                     (:system t-sys))]
+          
           (recur t-sys
           
                  sys
