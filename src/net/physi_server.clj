@@ -277,7 +277,7 @@
                                :tributaries [:heartbeat-status]
                                :sieve (fn [streams stream] 
                                         (s/map (fn [x] 
-                                                 (println x)
+                                                 (println "HBW: " x)
                                                  (if (= (:connection-status x) ::disconnected)
                                                    (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
                                                stream))
