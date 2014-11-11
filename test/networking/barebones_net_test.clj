@@ -10,27 +10,12 @@
   
   ;Provide initial data.
   
-  (loop [sys (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
-        
-         c-sys (->>
-      
-                 sys
-      
-                 (apply w/assemble w/manifold-step w/manifold-connect))]
+  (let [sys (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))]
     
-    
-    (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
+    (->>
       
-      (when status
-        (println status))
+      sys
       
-      (when (= @(:output status) :net.physi-server/disconnected)
-        (println "Connection lost!  Reconnecting...")
-        (recur (:system (n/cpu {:ip ip :neighbors 2 :requires [] :provides []}))
-               (->>
-      
-                 sys
-      
-                 (apply w/assemble w/manifold-step w/manifold-connect)))))))
+      (apply w/assemble w/manifold-step w/manifold-connect))))
     
 
