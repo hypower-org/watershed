@@ -313,6 +313,16 @@
                                 [:heartbeat-receive]                      
                                 (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))
                               
+                              {:title :heartbeat-watch
+                               :tributaries [:heartbeat-status]
+                               :sieve (fn [streams stream] 
+                                        (s/consume (fn [x] 
+                                                     #_(println "HBW: " x)
+                                                     (if (= (:connection-status x) ::disconnected)
+                                                       (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
+                                                   (s/map identity stream)))
+                               :type :dam}
+                              
                               (w/outline
                                  :system-status
                                  ;Change this to get a bunch of data...
