@@ -245,7 +245,7 @@
                              requires)
                      
                      ps (mapv (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                 (fn [stream] (s/map (fn [x] [p x]) stream))                                     
+                                                 (fn [stream] (s/map (fn [x] (println "PROVIDING: " x) [p x]) stream))                                     
                                                  :data-out)) 
                    
                              provides)
