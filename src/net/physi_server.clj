@@ -217,7 +217,7 @@
           (when-not (= c ip)
             (s/connect (get server ip) (get server c))
             (s/connect (get server c) (get server ip))            
-            (s/put! (nippy/freeze ::connected) (get server c))))
+            (s/put! (get server c) (nippy/freeze ::connected))))
         
         )
       (println @(s/take! client)))     
