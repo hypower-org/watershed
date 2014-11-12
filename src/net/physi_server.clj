@@ -187,8 +187,6 @@
       (let [woserver (dissoc server ::cleanup)        
             cs (keys woserver)
             ss (vals woserver)]         
-        
-        (s/consume #(println "cheating: " %) (s/map identity (get server "10.10.10.4")))
    
         @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
                                                    (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
