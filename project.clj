@@ -7,7 +7,7 @@
                  [lamina "0.5.5-SNAPSHOT"]     
                  [incanter "1.5.5"]
                  [net.mikera/core.matrix "0.29.1"]
-                 [manifold "0.1.0-beta3"]
+                 [manifold "0.1.0-beta5"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [criterium "0.4.3"]
                  [jkobuki "1.1.0"]
