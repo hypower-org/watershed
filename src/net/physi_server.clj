@@ -317,10 +317,14 @@
                                         (s/connect-via
                                           s                                           
                                           (fn [x]                                                                                                    
-                                            (when-not (= (type x) java.lang.String)
-                                              (println "data: " x)
-                                              (Thread/sleep 100)
-                                              (s/put! client (pr-str x))))  
+                                            (if-not (= (type x) java.lang.String)
+                                              (do
+                                                (println "data: " x)
+                                                (Thread/sleep 100)
+                                                (s/put! client (pr-str x)))
+                                              
+                                              (println "SPURIOUS")
+                                              ))  
                                           client)))))
                    
                                                                                         
