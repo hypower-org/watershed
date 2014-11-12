@@ -52,15 +52,15 @@
                                                                                                                      65
                                                                                                                      (do
                                                                                                                        (draw-robot ig -1.6)
-                                                                                                                       (s/put! s [100 -1.6]))
+                                                                                                                       (s/put! s [100 1.6]))
                                                                                                                      83
                                                                                                                      (do
                                                                                                                        (draw-robot ig 3.14)
-                                                                                                                       (s/put! s [100 3.14]))
+                                                                                                                       (s/put! s [0 0]))
                                                                                                                      68
                                                                                                                      (do
                                                                                                                        (draw-robot ig 1.6)
-                                                                                                                       (s/put! s [100 1.6]))
+                                                                                                                       (s/put! s [100 -1.6]))
                                                                                                                      (do))))]))
 
 (def repaint-thread (future (loop [] (repaint! f) (Thread/sleep 33) (recur)))) 
