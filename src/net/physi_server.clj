@@ -212,10 +212,10 @@
                                                                            []                                                          
                                                                            cs))))))
         
-        (doseq [c cs]
-          (when-not (= c ip)
-            (s/connect (get server ip) (get server c))
-            (s/connect (get server c) (get server ip))))
+;        (doseq [c cs]
+;          (when-not (= c ip)
+;            (s/connect (get server ip) (get server c))
+;            (s/connect (get server c) (get server ip))))
         
         ))     
     
