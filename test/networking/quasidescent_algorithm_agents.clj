@@ -1,13 +1,9 @@
 (ns networking.quasidescent-algorithm-agents 
-  (:require [lamina.core :as lamina]
-            [aleph.udp :as aleph-udp]
-            [gloss.core :as gloss]
+  (:require [aleph.udp :as aleph-udp]
             [aleph.tcp :as aleph]
             [manifold.deferred :as d]
             [watershed.core :as w]
-            [net.aqueduct :as a]
-            [net.networking :as net]
-            [net.faucet :as f]
+            [net.physi-server :as net]
             [clojure.pprint :as p]
             [watershed.graph :as g]
             [manifold.stream :as s]))
@@ -234,17 +230,17 @@
   
   states)
 
-(defn watch-fn 
-  
-  [watershed [agent]] 
-  
-  (when (< (abs (+ (del-objective-function agent) (dot-prod (:control agent) (del-global-constraint agent)))) 0.001)
-    
-    (println (+ (del-objective-function agent) (dot-prod (:control agent) (del-global-constraint agent))))
-    
-    (println "done!")
-    
-    (w/ebb watershed)))
+;(defn watch-fn 
+;  
+;  [watershed [agent]] 
+;  
+;  (when (< (abs (+ (del-objective-function agent) (dot-prod (:control agent) (del-global-constraint agent)))) 0.001)
+;    
+;    (println (+ (del-objective-function agent) (dot-prod (:control agent) (del-global-constraint agent))))
+;    
+;    (println "done!")
+;    
+;    (w/ebb watershed)))
 
 ;use gradient for error calc! (+ (del-objective-function @current-state) (dot-prod (:control @current-state) (del-global-constraint @current-state))) 
 
@@ -313,6 +309,8 @@
     
     (net/cpu {:ip ip :requires [:cloud] :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :neighbors 2})
     
+    :system
+    
     (concat [{:title :agent-one
               :tributaries [:agent-one :cloud]
               :sieve (fn 
@@ -348,7 +346,7 @@
                       ([& x] (s/map agent-fn (apply s/zip x))))
              :type :cyclic}])
     
-    (w/assemble w/manifold-step w/manifold-connect)))
+    (apply w/assemble w/manifold-step w/manifold-connect)))
 
 
 
