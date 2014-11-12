@@ -297,24 +297,8 @@
                                (w/outline :heartbeat-receive 
                                           [:client]
                                           (fn [stream] 
-                                            (selector (fn [packet]                                                                                              
-                                                        (let [[sndr] (defrost packet)]
-                                                          (println "HBR: " sndr)
-                                                          (if (= sndr :heartbeat-received)                                                                   
-                                                            (do
-                                                              (println "Got heartbeat on client!")
-                                                              {:connection-status ::connected})))) stream)))
-                                                                                                   
-                               (w/outline 
-                                 :heartbeat-status 
-                                 [:heartbeat-receive]                      
-                                 (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))                             
-                                             
-                               (w/outline
-                                 :system-status
-                                 ;Change this to get a bunch of data...
-                                 [:heartbeat-status]
-                                 (fn [stream] (s/reduce merge (s/map identity stream))))])
+                                            (s/consume #(println "hb rec: " %) (s/map identity stream))))
+                               ])
                      
                      ]               
                  
