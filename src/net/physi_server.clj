@@ -190,7 +190,7 @@
    
         @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
                                                    (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
-                                                                                                                            (read-string r)))))                                                                
+                                                                                                                            (read-string (b/convert r String))))))                                                                
                                                                                    responses))]       
                                                      #_(println "responses: " responses)                                                    
                                                      #_(println connections)            
@@ -307,7 +307,7 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] (s/map read-string client))))
+                   (cons (w/outline :client [] (fn [] (s/map #(read-string (b/convert % String)) client))))
                    
                    (cons (w/outline :out 
                                     [[:data-out]] 
