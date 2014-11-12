@@ -308,10 +308,16 @@
                                                              (println "Got heartbeat on client!")
                                                              {:connection-status ::connected})))) stream)))
                               
+                              (w/outline
+                                 :system-status
+                                 ;Change this to get a bunch of data...
+                                 [:heartbeat-status]
+                                 (fn [stream] (s/reduce merge (s/map identity stream))))
+                              
                               (w/outline :heartbeat-print
                                          [:heartbeat-receive]
                                          (fn [stream] 
-                                           (s/consume #(println "HB PRINTERINO: " %) stream)))
+                                           (s/consume #(println "HB PRINTERINO: " %) (s/map identity stream))))
                                ])
                      
                      ]               
