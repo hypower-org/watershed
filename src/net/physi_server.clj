@@ -329,10 +329,10 @@
                                  [:heartbeat-status]
                                  (fn [stream] (s/reduce merge (s/map identity stream))))
                               
-                              (w/outline :heartbeat-print
-                                         [:heartbeat-status]
-                                         (fn [stream] 
-                                           (s/consume #(println "HB PRINTERINO: " %) (s/map identity stream))))
+                              #_(w/outline :heartbeat-print
+                                          [:heartbeat-status]
+                                          (fn [stream] 
+                                            (s/consume #(println "HB PRINTERINO: " %) (s/map identity stream))))
                                ])
                      
                      ]               
