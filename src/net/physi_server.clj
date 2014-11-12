@@ -10,7 +10,7 @@
 
 (def ^:private B-ary (Class/forName "[B"))
 
-(defn- defrost 
+(defn defrost 
   [msg] 
   (nippy/thaw (b/convert msg B-ary)))
 
@@ -241,7 +241,7 @@
                              requires)
                      
                      ps (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                (fn [stream] (s/map (fn [x] [p x]) stream))                                     
+                                                (fn [stream] (s/map (fn [x] (println "providing: " x) [p x]) stream))                                     
                                                 :data-out)) 
                    
                              provides)

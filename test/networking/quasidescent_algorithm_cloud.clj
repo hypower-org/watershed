@@ -266,17 +266,27 @@
   
   [ip]
   
-  (->>
+  (let [sys (net/cpu {:ip ip :requires [:agent-one :agent-two :agent-three :agent-four :agent-five] :provides [:cloud] :neighbors 2})]
+    
+    
+  
+    (->>
+                 
+      sys
+    
+      :system
+    
+      (concat [{:title :cloud
+                :tributaries [:agent-one :agent-two :agent-three :agent-four :agent-five] 
+                :sieve (fn [& x] (s/map cloud-fn (apply s/zip x)))
+                :type :river}
                
-     
-    (net/cpu {:ip ip :requires [:agent-one :agent-two :agent-three :agent-four :agent-five] :provides [:cloud] :neighbors 2})
+               (w/outline :printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
+               
+               ])
     
-    :system
-    
-    (concat [{:title :cloud
-              :tributaries [:agent-one :agent-two :agent-three :agent-four :agent-five] 
-              :sieve (fn [& x] (s/map cloud-fn (apply s/zip x)))
-              :type :river}])
+      (apply w/assemble w/manifold-step w/manifold-connect))))
+
      
 ;     (merge 
 ;             
@@ -288,8 +298,6 @@
 ;                  :type :estuary}
 ;             
 ;             )
-    
-    (apply w/assemble w/manifold-step w/manifold-connect)))
 
 ;@current-state
 
