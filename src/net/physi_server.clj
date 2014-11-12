@@ -308,7 +308,7 @@
                               (w/outline :heartbeat-print
                                          [:heartbeat-receive]
                                          (fn [stream] 
-                                           (s/consume #(println "HB PRINTERINO: " %) (s/map identity stream))))
+                                           (s/consume #(println "HB PRINTERINO: " %) stream)))
                                ])
                      
                      ]               
