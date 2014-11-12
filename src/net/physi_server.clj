@@ -245,7 +245,7 @@
                              requires)
                      
                      ps (mapv (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                 (fn [stream] (s/map (fn [x] (println "providing: " x) [p x]) stream))                                     
+                                                 (fn [stream] (s/map (fn [x] [p x]) stream))                                     
                                                  :data-out)) 
                    
                              provides)
@@ -307,7 +307,7 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] (s/map #(read-string (b/convert % String)) client))))
+                   (cons (w/outline :client [] (fn [] (s/map (fn [x] (println "INCOMING: " x) (read-string (b/convert x String))) client))))
                    
                    (cons (w/outline :out 
                                     [[:data-out]] 
@@ -319,7 +319,7 @@
                                           (fn [x]                                                                                                    
                                             (if-not (= (type x) java.lang.String)
                                               (do
-                                                (println "data: " x)
+                                                ;(println "data: " x)
                                                 (Thread/sleep 100)
                                                 (s/put! client (pr-str x)))
                                               
