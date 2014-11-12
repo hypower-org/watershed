@@ -281,7 +281,7 @@
                 :sieve (fn [& x] (s/map cloud-fn (apply s/zip x)))
                 :type :river}
                
-               ;(w/outline :printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
+               (w/outline :printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
                
                ])
     
@@ -305,7 +305,7 @@
 
 ;(def result (w/ebb system))
 
-(view p)
+;(view p)
 
 ;result
 

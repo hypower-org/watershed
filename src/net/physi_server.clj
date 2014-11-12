@@ -187,7 +187,7 @@
       (let [woserver (dissoc server ::cleanup)        
             cs (keys woserver)
             ss (vals woserver)]          
-        
+   
         @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
                                                    (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
                                                                                                                             (defrost r)))))                                                                
@@ -234,15 +234,16 @@
                      
                      status-map {:connection-status ::connected}
                      
-                     rs (map (fn [r] (w/outline r [:client] (fn [stream] 
-                                                              (selector (fn [packet]                                                                                              
-                                                                          (let [[sndr val] packet]
-                                                                            (if (= sndr r) val))) stream)))) 
+                     rs (mapv (fn [r] (w/outline r [:client] (fn [stream] 
+                                                               (selector (fn [packet]                                                                                              
+                                                                           (let [[sndr val] packet]
+                                                                             (println "sele: " sndr)
+                                                                             (if (= sndr r) val))) stream)))) 
                              requires)
                      
-                     ps (map (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                (fn [stream] (s/map (fn [x] (println "providing: " x) [p x]) stream))                                     
-                                                :data-out)) 
+                     ps (mapv (fn [p] (w/outline (make-key "providing-" p) [p]                                       
+                                                 (fn [stream] (s/map (fn [x] (println "providing: " x) [p x]) stream))                                     
+                                                 :data-out)) 
                    
                              provides)
                      
@@ -314,7 +315,7 @@
                                           s                                           
                                           (fn [x]                                                                                                    
                                             (when-not (= (type x) B-ary)
-                                              #_(println "data: " x)
+                                              (println "data: " x)
                                               (s/put! client (nippy/freeze x))))  
                                           client)))))
                    
