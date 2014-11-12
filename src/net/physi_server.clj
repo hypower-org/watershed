@@ -186,14 +186,17 @@
     (if server      
       (let [woserver (dissoc server ::cleanup)        
             cs (keys woserver)
-            ss (vals woserver)]          
+            ss (vals woserver)]         
+        
+        (s/consume #(println "cheating: " %) (s/map identity (get server "10.10.10.4")))
    
         @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
                                                    (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
                                                                                                                             (defrost r)))))                                                                
                                                                                    responses))]       
                                                      #_(println "responses: " responses)                                                    
-                                                     #_(println connections)                                                    
+                                                     #_(println connections)            
+                                                     
                                                        (doall (map (fn [c connected-to]                                                                        
                                                                      (doall (map (fn [x]
                                                                                    (when-not (or (= (:ip x) leader) (= leader c))
@@ -212,10 +215,10 @@
                                                                            []                                                          
                                                                            cs))))))
         
-;        (doseq [c cs]
-;          (when-not (= c ip)
-;            (s/connect (get server ip) (get server c))
-;            (s/connect (get server c) (get server ip))))
+        (doseq [c cs]
+          (when-not (= c ip)
+            (s/connect (get server ip) (get server c))
+            (s/connect (get server c) (get server ip))))
         
         ))     
     
