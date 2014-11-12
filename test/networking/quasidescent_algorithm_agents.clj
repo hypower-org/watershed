@@ -266,7 +266,7 @@
   
   [ip]
     
-  (let [sys (net/cpu {:ip ip :requires [:cloud] :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :neighbors 1})
+  (let [sys (net/cpu {:ip ip :requires [:cloud] :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :neighbors 2})
         
         c-sys      
         
