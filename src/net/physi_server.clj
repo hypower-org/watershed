@@ -234,7 +234,7 @@
                
                (let [rs (map (fn [r] (w/outline r [:client] (fn [stream] 
                                                               (selector (fn [packet]                                                                                              
-                                                                          (let [[sndr val] (defrost packet)]
+                                                                          (let [[sndr val] packet]
                                                                             (println "rec: " sndr val)
                                                                             (if (= sndr r) val))) stream)))) 
                              requires)
@@ -248,7 +248,7 @@
                      hb-resp (if (= leader ip)
                                [(w/outline :heartbeat-respond [:client]                                       
                                            (fn [stream] (selector (fn [packet]                                                                          
-                                                                    (let [[sndr] (defrost packet)]
+                                                                    (let [[sndr] packet]
                                                                       (if (= sndr :heartbeat)                                                                   
                                                                         (do
                                                                           (println "Got heartbeat on server!")
@@ -301,7 +301,7 @@
                                          [:client]
                                          (fn [stream] 
                                            (selector (fn [packet]                                                                                              
-                                                       (let [[sndr] (defrost packet)]
+                                                       (let [[sndr] packet]
                                                          (println "HBR: " sndr)
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
@@ -320,7 +320,7 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] client)))
+                   (cons (w/outline :client [] (fn [] (s/map defrost client))))
                    
                    (cons (w/outline :out 
                                     [[:data-out]] 
