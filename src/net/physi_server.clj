@@ -307,7 +307,9 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] (s/map (fn [x] (println "INCOMING: " x) (read-string (b/convert x String))) client))))
+                   (cons (w/outline :client [] (fn [] (s/map (fn [x]                                                            
+                                                               (let [msg (b/convert x String)]
+                                                                 (println "INCOMING: " msg) (read-string msg))) client))))
                    
                    (cons (w/outline :out 
                                     [[:data-out]] 
@@ -320,7 +322,6 @@
                                             (if-not (= (type x) java.lang.String)
                                               (do
                                                 ;(println "data: " x)
-                                                (Thread/sleep 100)
                                                 (s/put! client (pr-str x)))
                                               
                                               (println "SPURIOUS")
