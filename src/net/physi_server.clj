@@ -65,14 +65,17 @@
         output (s/stream)]         
          (d/loop           
            [v (s/take! s)]          
-           (d/chain v (fn [x] (if (s/closed? output)                                
-                                (s/close! s)                                                              
-                                (if (nil? x)
-                                  (s/close! output)
-                                  (do
-                                    (let [result (pred x)]                                  
-                                      (if result (s/put! output result))) 
-                                    (d/recur (s/take! s))))))))        
+           (d/chain v (fn [x] 
+                        (println "Selector: " x)
+                        
+                        (if (s/closed? output)                                
+                          (s/close! s)                                                              
+                          (if (nil? x)
+                            (s/close! output)
+                            (do
+                              (let [result (pred x)]                                  
+                                (if result (s/put! output result))) 
+                              (d/recur (s/take! s))))))))        
          output))
 
 (defn take-within 
