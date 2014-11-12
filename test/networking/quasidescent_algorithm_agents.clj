@@ -265,88 +265,52 @@
 (defn -main 
   
   [ip]
-  
-  (let [ip (keyword ip)]
-  
-    (->
     
-      @(net/cpu ip {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2 
-              
-                :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :requires [:cloud])
+  (let [sys (net/cpu {:ip ip :requires [:cloud] :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :neighbors 1})
+        
+        c-sys      
+        
+        (->>
+      
+          sys
+      
+          :system
     
-      (merge {:agent-one {:tributaries [:agent-one :cloud]
-                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
-                          :initial (agents 0)
-                          :type :river}
-     
-              :agent-two {:tributaries [:agent-two :cloud]
-                           :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
-                           :initial (agents 1)
-                           :type :river}
-     
-              :agent-three {:tributaries [:agent-three :cloud]
-                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
-                          :initial (agents 2)
-                          :type :river}
-     
-              :agent-four {:tributaries [:agent-four :cloud]
-                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
-                          :initial (agents 3)
-                          :type :river}
-     
-              :agent-five {:tributaries [:agent-five :cloud]
-                          :sieve (fn [& x] (s/map agent-fn (apply s/zip x)))
-                          :initial (agents 4)
-                          :type :river}})
-    
-      w/assemble)))
-
-(defn -main 
-  
-  [ip]
-  
-  (->>
-    
-    (net/cpu {:ip ip :requires [:cloud] :provides [:agent-one :agent-two :agent-three :agent-four :agent-five] :neighbors 2})
-    
-    :system
-    
-    (concat [{:title :agent-one
-              :tributaries [:agent-one :cloud]
-              :sieve (fn 
-                       ([] (agents 0))
-                       ([& x] (s/map agent-fn (apply s/zip x))))
-              :type :cyclic}
+          (concat [{:title :agent-one
+                    :tributaries [:agent-one :cloud]
+                    :sieve (fn                             
+                             ([] (agents 0))
+                             ([& x] (s/map agent-fn (apply s/zip x))))}
              
-            {:title :agent-two
-             :tributaries [:agent-two :cloud]
-             :sieve (fn 
-                      ([] (agents 1))
-                      ([& x] (s/map agent-fn (apply s/zip x))))
-             :type :cyclic}
+                  {:title :agent-two
+                   :tributaries [:agent-two :cloud]
+                   :sieve (fn 
+                            ([] (agents 1))
+                            ([& x] (s/map agent-fn (apply s/zip x))))}
              
-            {:title :agent-three
-             :tributaries [:agent-three :cloud]
-             :sieve (fn 
-                      ([] (agents 2))
-                      ([& x] (s/map agent-fn (apply s/zip x))))
-             :type :cyclic}
+                  {:title :agent-three
+                   :tributaries [:agent-three :cloud]
+                   :sieve (fn 
+                            ([] (agents 2))
+                            ([& x] (s/map agent-fn (apply s/zip x))))}
                                        
-            {:title :agent-four
-             :tributaries [:agent-four :cloud]
-             :sieve (fn 
-                      ([] (agents 3))
-                      ([& x] (s/map agent-fn (apply s/zip x))))
-             :type :cyclic}
+                  {:title :agent-four
+                   :tributaries [:agent-four :cloud]
+                   :sieve (fn 
+                            ([] (agents 3))
+                            ([& x] (s/map agent-fn (apply s/zip x))))}
                                                     
-            {:title :agent-five
-             :tributaries [:agent-five :cloud]
-             :sieve (fn 
-                      ([] (agents 4))
-                      ([& x] (s/map agent-fn (apply s/zip x))))
-             :type :cyclic}])
+                  {:title :agent-five
+                   :tributaries [:agent-five :cloud]
+                   :sieve (fn 
+                            ([] (agents 4))
+                            ([& x] (s/map agent-fn (apply s/zip x))))}])
     
-    (apply w/assemble w/manifold-step w/manifold-connect)))
+          (apply w/assemble w/manifold-step w/manifold-connect))]    
+    
+    c-sys
+    
+    ))
 
 
 

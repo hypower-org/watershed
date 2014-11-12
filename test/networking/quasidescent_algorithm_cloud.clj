@@ -1,4 +1,4 @@
-(ns networking.quasidescent-algorithm-agents 
+(ns networking.quasidescent-algorithm-cloud 
   (:require [aleph.udp :as aleph-udp]
             [aleph.tcp :as aleph]
             [manifold.deferred :as d]
