@@ -319,6 +319,7 @@
                                           (fn [x]                                                                                                    
                                             (when-not (= (type x) B-ary)
                                               (println "data: " x)
+                                              (Thread/sleep 1)
                                               (s/put! client (nippy/freeze x))))  
                                           client)))))
                    
