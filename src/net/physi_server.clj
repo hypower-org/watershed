@@ -322,7 +322,7 @@
                                             (if-not (= (type x) java.lang.String)
                                               (do
                                                 ;(println "data: " x)
-                                                (Thread/sleep 1)
+                                                (Thread/sleep 10)
                                                 (s/put! client (pr-str x)))
                                               
                                               (println "SPURIOUS")
