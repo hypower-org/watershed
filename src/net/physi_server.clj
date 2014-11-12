@@ -266,7 +266,7 @@
                                          [:client]
                                          (fn [stream] 
                                            (selector (fn [packet]                                                                                              
-                                                       (let [[sndr] (defrost packet)]
+                                                       (let [[sndr] packet]
                                                          (println "HBR: " sndr)
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
