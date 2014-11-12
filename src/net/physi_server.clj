@@ -228,10 +228,15 @@
         
         (assoc :system 
                
-               (let [rs (map (fn [r] (w/outline r [:client] (fn [stream] 
+               (let [hb-vector [:heartbeat]
+                     
+                     hb-r-vector [:heartbeat-received]
+                     
+                     status-map {:connection-status ::connected}
+                     
+                     rs (map (fn [r] (w/outline r [:client] (fn [stream] 
                                                               (selector (fn [packet]                                                                                              
                                                                           (let [[sndr val] packet]
-                                                                            (println "rec: " sndr val)
                                                                             (if (= sndr r) val))) stream)))) 
                              requires)
                      
@@ -248,14 +253,14 @@
                                                                       (if (= sndr :heartbeat)                                                                   
                                                                         (do
                                                                           (println "Got heartbeat on server!")
-                                                                          [:heartbeat-received])))) stream))                               
+                                                                          hb-r-vector)))) stream))                               
                                            :data-out)]
                                [])
                      
                      hb-cl (if (= leader ip)
                              []                           
                              [(w/outline :heartbeat []
-                                 (fn [] (s/periodically 5000 (fn [] [:heartbeat])))
+                                 (fn [] (s/periodically 5000 (fn [] hb-vector)))
                                  :data-out)
                               
                               (w/outline :heartbeat-receive 
@@ -267,7 +272,7 @@
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
                                                              (println "Got heartbeat on client!")
-                                                             {:connection-status ::connected})))) stream)))
+                                                             status-map)))) stream)))
                               
                               (w/outline 
                                 :heartbeat-status 

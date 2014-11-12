@@ -78,7 +78,7 @@
 ;This is probably unnecessary
 
 (defn close 
-  "Given a step function, attempt to close all of the streams in the system."
+  "Given a step function, attempts to close all of the streams in the system."
   [step & outlines] 
   (let [streams (map :stream outlines)]
   (if (some nil? outlines)
@@ -220,11 +220,9 @@
   "Retrieves the output of a given body" 
   [title & outlines]  
   (:output (first (filter #(= (:title %) title) outlines))))                
-  
-  
-  
-  
-  
+
+
+
   
   
   

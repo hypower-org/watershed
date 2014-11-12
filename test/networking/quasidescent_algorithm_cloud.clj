@@ -267,28 +267,30 @@
 
 (defn -main 
   
-  []
+  [ip]
   
-  (->
-
-     @(net/cpu :10.10.10.5 {:10.10.10.5 {:edges [:10.10.10.3]} :10.10.10.3 {:edges [:10.10.10.5]}} 2
+  (->>
                
-               :provides [:cloud] :requires [:agent-one :agent-two :agent-three :agent-four :agent-five])
      
-     (merge {:cloud {:tributaries [:agent-one :agent-two :agent-three :agent-four :agent-five] 
-                     :sieve (fn [& x] (s/map cloud-fn (apply s/zip x)))
-                     :type :river}
-             
-             :aggregator {:tributaries [:aggregator :cloud] :sieve (fn [& x] (s/map aggregator-fn (apply s/zip x)))
-                          :initial []
-                          :type :river}
-             
-             :ui {:tributaries [:aggregator] :sieve (fn [x] (s/consume ui-fn x)) 
-                  :type :estuary}
-             
-             })
+    (net/cpu {:ip ip :requires [:agent-one :agent-two :agent-three :agent-four :agent-five] :provides [:cloud] :neighbors 2})
     
-    w/assemble))
+    (concat [{:title :cloud
+              :tributaries [:agent-one :agent-two :agent-three :agent-four :agent-five] 
+              :sieve (fn [& x] (s/map cloud-fn (apply s/zip x)))
+              :type :river}])
+     
+;     (merge 
+;             
+;             :aggregator {:tributaries [:aggregator :cloud] :sieve (fn [& x] (s/map aggregator-fn (apply s/zip x)))
+;                          :initial []
+;                          :type :river}
+;             
+;             :ui {:tributaries [:aggregator] :sieve (fn [x] (s/consume ui-fn x)) 
+;                  :type :estuary}
+;             
+;             )
+    
+    (w/assemble w/manifold-step w/manifold-connect)))
 
 ;@current-state
 
