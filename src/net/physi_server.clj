@@ -240,7 +240,7 @@
                      rs (mapv (fn [r] (w/outline r [:client] (fn [stream] 
                                                                (selector (fn [packet]                                                                                              
                                                                            (let [[sndr val] packet]
-                                                                             (println "sele: " sndr)
+                                                                             ;(println "sele: " sndr)
                                                                              (if (= sndr r) val))) stream)))) 
                              requires)
                      
