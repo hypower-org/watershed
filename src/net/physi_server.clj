@@ -181,7 +181,7 @@
         
         client @client]    
     
-    (s/put! client (nippy/freeze [requires provides ip]))  
+    (s/put! client (pr-str [requires provides ip]))  
     
     (if server      
       (let [woserver (dissoc server ::cleanup)        
@@ -190,7 +190,7 @@
    
         @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
                                                    (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
-                                                                                                                            (defrost r)))))                                                                
+                                                                                                                            (read-string r)))))                                                                
                                                                                    responses))]       
                                                      #_(println "responses: " responses)                                                    
                                                      #_(println connections)            
@@ -217,7 +217,7 @@
           (when-not (= c ip)
             (s/connect (get server ip) (get server c))
             (s/connect (get server c) (get server ip))            
-            (s/put! (get server c) (nippy/freeze ::connected))))
+            (s/put! (get server c) (pr-str ::connected))))
         
         )
       (println @(s/take! client)))     
@@ -307,7 +307,7 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] (s/map defrost client))))
+                   (cons (w/outline :client [] (fn [] (s/map read-string client))))
                    
                    (cons (w/outline :out 
                                     [[:data-out]] 
@@ -317,10 +317,10 @@
                                         (s/connect-via
                                           s                                           
                                           (fn [x]                                                                                                    
-                                            (when-not (= (type x) B-ary)
+                                            (when-not (= (type x) java.lang.String)
                                               (println "data: " x)
                                               (Thread/sleep 100)
-                                              (s/put! client (nippy/freeze x))))  
+                                              (s/put! client (pr-str x))))  
                                           client)))))
                    
                                                                                         
