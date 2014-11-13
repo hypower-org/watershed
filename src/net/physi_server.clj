@@ -223,7 +223,7 @@
             (s/put! (get server c) (pr-str ::connected))))
         
         )
-      (println (b/convert @(s/take! client) String))     
+      (println (b/convert @(s/take! client) String)))     
     
       (-> 
       
