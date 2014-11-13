@@ -333,9 +333,7 @@
                                                                     
                                                                     (s/filter not-empty)
                                                                   
-                                                                    (s/map (fn [x] 
-                                                                             (println x) 
-                                                                             (read-string x)))))))                   
+                                                                    (s/map read-string)))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 
@@ -347,8 +345,7 @@
                                           (fn [x]                                                                                                    
                                             (if-not (= (type x) java.lang.String)
                                               (do
-                                                ;(println "data: " x)
-                                                ;(Thread/sleep 10)
+                                                #_(println "data: " x)
                                                 (apply d/zip (doall (map #(s/put! client %) (encode' x)))))
                                               
                                               (println "SPURIOUS")
