@@ -328,7 +328,7 @@
                    (cons (w/outline :client [:client-converted] (fn [stream] (s/map (fn [x] 
                                                                                       (println x) 
                                                                                       (read-string x)) 
-                                                                                    (decode stream frame)))))                   
+                                                                                    (decode-stream stream frame)))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 
