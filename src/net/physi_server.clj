@@ -339,7 +339,7 @@
                                               (do
                                                 ;(println "data: " x)
                                                 (Thread/sleep 250)
-                                                (apply d/zip (doall (map #(s/put! client %) (encode' x))))
+                                                (apply d/zip (doall (map #(s/put! client %) (encode' x)))))
                                               
                                               (println "SPURIOUS")
                                               ))  
