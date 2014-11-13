@@ -323,7 +323,7 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % String) client))))
+                   (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % java.nio.Buffer) client))))
                    
                    (cons (w/outline :client [:client-converted] (fn [stream] (s/map (fn [x] 
                                                                                       (println x) 
