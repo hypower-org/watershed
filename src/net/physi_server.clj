@@ -6,10 +6,22 @@
             [watershed.core :as w]
             [taoensso.nippy :as nippy]
             [aleph.udp :as udp]
-            [watershed.utils :as u]))
+            [watershed.utils :as u])
+  (:use [gloss.core]
+        [gloss.io]))
 
 (def ^:private B-ary (Class/forName "[B"))
+(def ^:private delimiter "|!|")
+(def ^:private frame (string :utf-8 :delimiters [delimiter]))
 
+(defn ^String delimit 
+  [^String s]
+  (str s delimiter))
+
+(defn encode' 
+  [msg]
+  (encode frame msg))
+  
 (defn defrost 
   [msg] 
   (nippy/thaw (b/convert msg B-ary)))
@@ -223,6 +235,7 @@
             (s/put! (get server c) (pr-str ::connected))))
         
         )
+      ;Add in more complex checks here in the future
       (println (b/convert @(s/take! client) String)))     
     
       (-> 
@@ -310,10 +323,10 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] (s/map (fn [x]                                                            
-                                                               (let [msg (b/convert x String)]
-                                                                 (println "INCOMING: " msg) (read-string msg))) client))))
+                   (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % String) client))))
                    
+                   (cons (w/outline :client [:client-converted] (fn [stream] (decode stream frame))))                   
+                                    
                    (cons (w/outline :out 
                                     [[:data-out]] 
                                     (fn 
@@ -325,8 +338,8 @@
                                             (if-not (= (type x) java.lang.String)
                                               (do
                                                 ;(println "data: " x)
-                                                (Thread/sleep 100)
-                                                (s/put! client (pr-str x)))
+                                                (Thread/sleep 250)
+                                                (apply d/zip (doall (map #(s/put! client %) (encode' x))))
                                               
                                               (println "SPURIOUS")
                                               ))  
