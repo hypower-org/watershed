@@ -20,7 +20,7 @@
 
 (defn encode' 
   [msg]
-  (encode frame msg))
+  (encode frame (delimit (pr-str msg))))
   
 (defn defrost 
   [msg] 
@@ -325,7 +325,10 @@
                    
                    (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % String) client))))
                    
-                   (cons (w/outline :client [:client-converted] (fn [stream] (decode stream frame))))                   
+                   (cons (w/outline :client [:client-converted] (fn [stream] (s/map (fn [x] 
+                                                                                      (println x) 
+                                                                                      (read-string x)) 
+                                                                                    (decode stream frame)))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 
