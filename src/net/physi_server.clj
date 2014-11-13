@@ -325,10 +325,17 @@
                    
                    (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % java.nio.Buffer) client))))
                    
-                   (cons (w/outline :client [:client-converted] (fn [stream] (s/map (fn [x] 
-                                                                                      (println x) 
-                                                                                      (read-string x)) 
-                                                                                    (decode-stream stream frame)))))                   
+                   (cons (w/outline :client [:client-converted] (fn [stream] 
+                                                                  
+                                                                  (->> 
+                                                                    
+                                                                    (decode-stream stream frame)
+                                                                    
+                                                                    (s/filter not-empty)
+                                                                  
+                                                                    (s/map (fn [x] 
+                                                                             (println x) 
+                                                                             (read-string x)))))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 
