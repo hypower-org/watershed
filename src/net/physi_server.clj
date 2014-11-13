@@ -29,7 +29,7 @@
   
   (assert (some? host) "A host IP address must be specified.")  
   
-  (let [c-data {:host host :port port}]
+  (let [c-data {:host host :port port :insecure? true :sll? true}]
     (d/loop [c (->                         
                  (tcp/client c-data)                         
                  (d/timeout! interval nil))]          
@@ -216,11 +216,14 @@
         (doseq [c cs]
           (when-not (= c ip)
             (s/connect (get server ip) (get server c))
-            (s/connect (get server c) (get server ip))            
+            (s/connect (get server c) (get server ip))))
+        
+        (doseq [c cs]
+          (when-not (= c ip)          
             (s/put! (get server c) (pr-str ::connected))))
         
         )
-      (println @(s/take! client)))     
+      (println (b/convert @(s/take! client) String))     
     
       (-> 
       
@@ -245,7 +248,7 @@
                              requires)
                      
                      ps (mapv (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                 (fn [stream] (s/map (fn [x] (println "PROVIDING: " x) [p x]) stream))                                     
+                                                 (fn [stream] (s/map (fn [x] #_(println "PROVIDING: " x) [p x]) stream))                                     
                                                  :data-out)) 
                    
                              provides)
