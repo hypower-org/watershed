@@ -348,7 +348,7 @@
                                             (if-not (= (type x) java.lang.String)
                                               (do
                                                 ;(println "data: " x)
-                                                (Thread/sleep 10)
+                                                ;(Thread/sleep 10)
                                                 (apply d/zip (doall (map #(s/put! client %) (encode' x)))))
                                               
                                               (println "SPURIOUS")
