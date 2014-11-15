@@ -27,7 +27,7 @@
       
                  sys
                  
-                 (cons sys (w/outline :printer [:overload] (fn [stream] (s/consume println (s/map identity stream)))))
+                 (cons (w/outline :printer [:overload] (fn [stream] (s/consume println (s/map identity stream)))))
       
                  (apply w/assemble w/manifold-step w/manifold-connect))]
     
@@ -51,6 +51,6 @@
       
                    sys
                    
-                   (cons sys (w/outline :printer [:overload] (fn [stream] (s/consume println (s/map identity stream)))))
+                   (cons (w/outline :printer [:overload] (fn [stream] (s/consume println (s/map identity stream)))))
       
                    (apply w/assemble w/manifold-step w/manifold-connect))))))))

@@ -27,7 +27,7 @@
       
                  sys
                  
-                 (cons sys (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [ip :data!])))))
+                 (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [ip :data!])))))
       
                  (apply w/assemble w/manifold-step w/manifold-connect))]
     
@@ -51,6 +51,6 @@
       
                    sys
                    
-                   (cons sys (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [ip :data!])))))
+                   (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [ip :data!])))))
       
                    (apply w/assemble w/manifold-step w/manifold-connect))))))))
