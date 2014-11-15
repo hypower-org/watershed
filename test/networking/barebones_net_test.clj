@@ -3,14 +3,15 @@
             [net.physi-server :as n]
             [manifold.stream :as s]
             [aleph.udp :as udp]
-            [manifold.deferred :as d]))
+            [manifold.deferred :as d])
+  (:gen-class))
 
 (defn -main
-  [ip]
+  [ip neighbors]
   
   ;Provide initial data.
   
-  (loop [t-sys (n/cpu {:ip ip :neighbors 2 :requires [] :provides []})
+  (loop [t-sys (n/cpu {:ip ip :neighbors neighbors :requires [] :provides []})
          
          sys (:system t-sys)
         

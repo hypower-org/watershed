@@ -16,8 +16,9 @@
                  [com.taoensso/nippy "2.7.0"]
                  [org.clojure/core.match "0.2.1"]
                  [byte-streams "0.2.0-alpha3"]
+                 [org.clojure/math.numeric-tower "0.0.4"]
                  [gloss "0.2.3"]
                  [aleph "0.4.0-alpha9"]]
   :plugins [[lein-nodisassemble "0.1.3"]]
-  :main networking.kobuki-client
-  :aot [networking.kobuki-client])
+  :main networking.barebones-net-test
+  :aot [networking.barebones-net-test])

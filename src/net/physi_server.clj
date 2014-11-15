@@ -14,15 +14,15 @@
 (def ^:private delimiter "|!|")
 (def ^:private frame (string :utf-8 :delimiters [delimiter]))
 
-(defn ^String delimit 
+(defn- ^String delimit 
   [^String s]
   (str s delimiter))
 
-(defn encode' 
+(defn- encode' 
   [msg]
   (encode frame (delimit (pr-str msg))))
   
-(defn defrost 
+(defn- defrost 
   [msg] 
   (nippy/thaw (b/convert msg B-ary)))
 
@@ -225,17 +225,25 @@
                                                                            []                                                          
                                                                            cs))))))
         
+        ;#### Connect every client to the server and vice-versa ####
+        
         (doseq [c cs]
           (when-not (= c ip)
             (s/connect (get server ip) (get server c))
             (s/connect (get server c) (get server ip))))
+        
+        ;#### Let all the clients know that everything is connected
         
         (doseq [c cs]
           (when-not (= c ip)          
             (s/put! (get server c) (pr-str ::connected))))
         
         )
+      
       ;Add in more complex checks here in the future
+      
+      ;#### Block until server is properly initialized ####
+      
       (println (b/convert @(s/take! client) String)))     
     
       (-> 
@@ -288,7 +296,6 @@
                                          (fn [stream] 
                                            (selector (fn [packet]                                                                                              
                                                        (let [[sndr] packet]
-                                                         (println "HBR: " sndr)
                                                          (if (= sndr :heartbeat-received)                                                                   
                                                            (do
                                                              (println "Got heartbeat on client!")
@@ -303,7 +310,6 @@
                                :tributaries [:heartbeat-status]
                                :sieve (fn [streams stream] 
                                         (s/consume (fn [x] 
-                                                     #_(println "HBW: " x)
                                                      (if (= (:connection-status x) ::disconnected)
                                                        (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
                                                    (s/map identity stream)))
