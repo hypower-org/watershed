@@ -1,4 +1,4 @@
-(ns networking.barebones-net-test
+(ns networking.overload-server
   (:require [watershed.core :as w]
             [net.physi-server :as n]
             [manifold.stream :as s]
@@ -19,13 +19,15 @@
                                     (if (= t java.lang.Long)
                                       neighbors
                                       (parse-int neighbors)))
-                       :requires [] :provides []})
+                       :requires [:overload] :provides []})
          
          sys (:system t-sys)
         
          c-sys (->>
       
                  sys
+                 
+                 (cons sys (w/outline :printer [:overload] (fn [stream] (s/consume println (s/map identity stream)))))
       
                  (apply w/assemble w/manifold-step w/manifold-connect))]
     
@@ -40,6 +42,7 @@
                                                   (parse-int neighbors))) 
                             :requires [] :provides []})
               sys (:system t-sys)]
+          
           (recur t-sys
           
                  sys
@@ -47,7 +50,7 @@
                  (->>
       
                    sys
+                   
+                   (cons sys (w/outline :printer [:overload] (fn [stream] (s/consume println (s/map identity stream)))))
       
                    (apply w/assemble w/manifold-step w/manifold-connect))))))))
-    
-
