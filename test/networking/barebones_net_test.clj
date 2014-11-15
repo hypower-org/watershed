@@ -6,12 +6,20 @@
             [manifold.deferred :as d])
   (:gen-class))
 
+(defn parse-int [s]
+   (Integer. (re-find  #"\d+" s )))
+
 (defn -main
   [ip neighbors]
   
   ;Provide initial data.
   
-  (loop [t-sys (n/cpu {:ip ip :neighbors neighbors :requires [] :provides []})
+  (loop [t-sys (n/cpu {:ip ip 
+                       :neighbors (let [t (type neighbors)]
+                                    (if (= t java.lang.Long)
+                                      neighbors
+                                      (parse-int neighbors)))
+                       :requires [] :provides []})
          
          sys (:system t-sys)
         
