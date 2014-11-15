@@ -337,7 +337,7 @@
                                                                     
                                                                     (s/filter not-empty)
                                                                   
-                                                                    (s/map read-string)))))                   
+                                                                    (s/map (fn [x] (println x) (read-string x)))))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 

@@ -27,7 +27,7 @@
       
                  sys
                  
-                 (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [ip :data!])))))
+                 (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [(last (clojure.string/split ip)) :data!])))))
       
                  (apply w/assemble w/manifold-step w/manifold-connect))]
     
@@ -40,7 +40,7 @@
                                                 (if (= t java.lang.Long)
                                                   neighbors
                                                   (parse-int neighbors))) 
-                            :requires [] :provides []})
+                            :requires [] :provides [:overload]})
               sys (:system t-sys)]
           
           (recur t-sys
@@ -51,6 +51,6 @@
       
                    sys
                    
-                   (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [ip :data!])))))
+                   (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [(last (clojure.string/split ip)) :data!])))))
       
                    (apply w/assemble w/manifold-step w/manifold-connect))))))))

@@ -20,5 +20,5 @@
                  [gloss "0.2.3"]
                  [aleph "0.4.0-alpha9"]]
   :plugins [[lein-nodisassemble "0.1.3"]]
-  :main networking.barebones-net-test
-  :aot [networking.barebones-net-test])
+  :main networking.overload-client
+  :aot [networking.overload-client])
