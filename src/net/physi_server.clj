@@ -1,5 +1,6 @@
 (ns net.physi-server
   (:require [aleph.tcp :as tcp]
+            [aleph.netty :as netty]
             [manifold.stream :as s]
             [manifold.deferred :as d]
             [byte-streams :as b]
@@ -12,13 +13,13 @@
 
 (def ^:private B-ary (Class/forName "[B"))
 (def ^:private delimiter "|!|")
-(def ^:private frame (string :utf-8 :delimiters [delimiter]))
+(def frame (string :utf-8 :delimiters [delimiter]))
 
 (defn- ^String delimit 
   [^String s]
   (str s delimiter))
 
-(defn- encode' 
+(defn encode' 
   [msg]
   (encode frame (delimit (pr-str msg))))
   
@@ -51,7 +52,7 @@
            (if x
              x    
              (do 
-               (println "Connecting...")
+               (println "Connecting to " host " ...")
                (d/recur (-> 
                           (tcp/client c-data)
                           (d/timeout! interval nil))))))))))
@@ -120,7 +121,7 @@
   (when (>= (count (keys accumulation)) expected)   
     ;EW. Do something better than this in the future...
     (future
-      (Thread/sleep 5000)
+      (Thread/sleep 15000)
       (doall (map #(if (s/stream? %) (s/close! %)) streams)))))
 
 (defn elect-leader 
@@ -134,7 +135,7 @@
         socket @(udp/socket {:port port :broadcast? true})
         
         msg {:message (nippy/freeze (u/cpu-units)) :port port 
-             :host (let [split (butlast (clojure.string/split "10.10.10.5" #"\."))]
+             :host (let [split (butlast (clojure.string/split ip #"\."))]
                      (str (clojure.string/join (interleave split (repeat (count split) "."))) "255"))}
         
         system (w/assemble w/manifold-step
@@ -254,9 +255,11 @@
         
         (assoc :system 
                
-               (let [hb-vector [:heartbeat]
+               (let [id (last (clojure.string/split ip #"\."))
                      
-                     hb-r-vector [:heartbeat-received]
+                     hb-vector [:heartbeat id]
+                     
+                     rec-id (keyword (str "heartbeat-received-" id))
                      
                      status-map {:connection-status ::connected}
                      
@@ -273,53 +276,55 @@
                              provides)
                      
                      hb-resp (if (= leader ip)
-                               [(w/outline :heartbeat-respond [:client]                                       
-                                           (fn [stream] (selector (fn [packet]                                                                          
-                                                                    (let [[sndr] packet]
-                                                                      (if (= sndr :heartbeat)                                                                   
-                                                                        (do
-                                                                          (println "Got heartbeat on server!")
-                                                                          hb-r-vector)))) stream))                               
-                                           :data-out)]
+                               #_[(w/outline :heartbeat-respond [:client]                                       
+                                            (fn [stream] (selector (fn [packet]                                                                          
+                                                                     (let [[sndr msg] packet]
+                                                                       (if (= sndr :heartbeat)                                                                   
+                                                                         (do
+                                                                           (println "Got heartbeat from " msg ", on server!")
+                                                                           [(keyword (str "heartbeat-received-" msg))])))) stream))                               
+                                            :data-out)]
+                               []
                                [])
                      
                      hb-cl (if (= leader ip)
                              []                           
-                             [(w/outline :heartbeat []
-                                 (fn [] (s/periodically 5000 (fn [] hb-vector)))
-                                 :data-out)
+                             #_[(w/outline :heartbeat []
+                                  (fn [] (s/periodically 5000 (fn [] hb-vector)))
+                                  :data-out)
                               
-                              (w/outline :heartbeat-receive 
-                                         [:client]
-                                         (fn [stream] 
-                                           (selector (fn [packet]                                                                                              
-                                                       (let [[sndr] packet]
-                                                         (if (= sndr :heartbeat-received)                                                                   
-                                                           (do
-                                                             (println "Got heartbeat on client!")
-                                                             status-map)))) stream)))
+                               (w/outline :heartbeat-receive 
+                                          [:client]
+                                          (fn [stream] 
+                                            (selector (fn [packet]                                                                                              
+                                                        (let [[sndr] packet]
+                                                          (if (= sndr rec-id)                                                                   
+                                                            (do
+                                                              (println "Got heartbeat on client!")
+                                                              status-map)))) stream)))
                               
-                              (w/outline 
-                                :heartbeat-status 
-                                [:heartbeat-receive]                      
-                                (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))
+                               (w/outline 
+                                 :heartbeat-status 
+                                 [:heartbeat-receive]                      
+                                 (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))
                               
-                              {:title :heartbeat-watch
-                               :tributaries [:heartbeat-status]
-                               :sieve (fn [streams stream] 
-                                        (s/consume (fn [x] 
-                                                     (if (= (:connection-status x) ::disconnected)
-                                                       (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
-                                                   (s/map identity stream)))
-                               :type :dam}
+                               {:title :heartbeat-watch
+                                :tributaries [:heartbeat-status]
+                                :sieve (fn [streams stream] 
+                                         (s/consume (fn [x] 
+                                                      (if (= (:connection-status x) ::disconnected)
+                                                        (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
+                                                    (s/map identity stream)))
+                                :type :dam}
                               
-                              (w/outline
-                                 :system-status
-                                 ;Change this to get a bunch of data...
-                                 [:heartbeat-status]
-                                 (fn [stream] (s/reduce merge (s/map identity stream))))
+                               (w/outline
+                                  :system-status
+                                  ;Change this to get a bunch of data...
+                                  [:heartbeat-status]
+                                  (fn [stream] (s/reduce merge (s/map identity stream))))
                               
-                              ])
+                               ]
+                             [])
                      
                      ]               
                  
@@ -327,7 +332,10 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % java.nio.Buffer) client))))
+                   (cons (w/outline :client-converted [] (fn [] (s/map (fn [x] 
+                                                                         (println (type x))
+                                                                         (b/convert (b/convert x java.nio.ByteBuffer) java.nio.HeapByteBuffer)
+                                                                         #_x) client))))
                    
                    (cons (w/outline :client [:client-converted] (fn [stream] 
                                                                   
@@ -337,7 +345,7 @@
                                                                     
                                                                     (s/filter not-empty)
                                                                   
-                                                                    (s/map (fn [x] (println x) (read-string x)))))))                   
+                                                                    (s/map (fn [x] #_(println x) (read-string x)))))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 
