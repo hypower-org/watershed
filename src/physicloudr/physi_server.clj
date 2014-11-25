@@ -333,9 +333,10 @@
                                [])
                      
                      hb-cl (if (= leader ip)                       
+                             []
                              [(w/outline :heartbeat []
-                                 (fn [] (s/periodically 5000 (fn [] hb-vector)))
-                                 :data-out)
+                                         (fn [] (s/periodically 5000 (fn [] hb-vector)))
+                                         :data-out)
                               
                               (w/outline :heartbeat-receive 
                                          [:client]
@@ -365,10 +366,7 @@
                                  :system-status
                                  ;Change this to get a bunch of data...
                                  [:heartbeat-status]
-                                 (fn [stream] (s/reduce merge (s/map identity stream))))]
-                             [])
-                     
-                     ]               
+                                 (fn [stream] (s/reduce merge (s/map identity stream))))])]               
                  
                  (->>
                    
@@ -399,8 +397,7 @@
                                                 #_(println "data: " x)
                                                 (apply d/zip (doall (map #(s/put! client %) (encode' x)))))
                                               
-                                              (println "SPURIOUS")
-                                              ))  
+                                              (println "SPURIOUS")))  
                                           client)))))
                    
                                                                                         
