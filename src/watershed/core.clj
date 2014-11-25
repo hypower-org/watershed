@@ -49,8 +49,6 @@
   [env _ _ _ ]
   env)
 
-;Horrible side effects...would be better to find a solution to this!
-
 (defn- expand-dependencies
   [groups dependencies]
   (vec (flatten (map (fn [dependency]                
@@ -112,11 +110,15 @@
              
         ;#### Expand dependencies and infer types! ####
         
-        [sccs with-deps] (let [groups (reduce (fn [m {:keys [title group]}] 
-                                                (if group 
-                                                  (update-in m [group] (fn [x] (conj x title))) 
-                                                  m)) 
-                                              {} outlines)
+        [sccs with-deps] (let [groups (-> 
+                                        
+                                        (reduce (fn [m {:keys [title group]}] 
+                                                  (if group 
+                                                    (update-in m [group] (fn [x] (conj x title))) 
+                                                    m)) 
+                                                {} outlines)
+                                        
+                                        (assoc :all (mapv :title outlines)))
                         
                                deps-expanded (map (fn [o] (assoc o :tributaries (expand-dependencies groups (:tributaries o)))) outlines) 
                         
@@ -132,7 +134,9 @@
                                         (fn [vals]
                                           (if (= (count vals) 1)
                                             (let [val (vals 0)]
-                                            (not (val (:edges (val graph)))))))))
+                                            (not (val (:edges (val graph))))))))
+                                      
+                                      (remove empty?))
                         
                                pred (apply (comp set concat) sccs)]   
                     
@@ -207,7 +211,7 @@
                                            (if (> (count (:tributaries o)) (count (:tributaries max)))
                                              o
                                              max))                            
-                                         (filter (comp (set scc-group) :title) cycles))]        
+                                         (filter (comp (set scc-group) :title) cycles))] 
                     (filter (comp (set (:tributaries max-deps)) :title) cycles)))          
                 sccs)]    
       (step ((:title o) env) ((:sieve o))))

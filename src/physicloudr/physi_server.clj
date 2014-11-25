@@ -1,6 +1,5 @@
-(ns net.physi-server
-  (:require [aleph.tcp :as tcp]
-            [aleph.netty :as netty]
+(ns physicloudr.physi-server
+  (:require [aleph.tcp :as tcp] 
             [manifold.stream :as s]
             [manifold.deferred :as d]
             [byte-streams :as b]
@@ -13,7 +12,20 @@
 
 (def ^:private B-ary (Class/forName "[B"))
 (def ^:private delimiter "|!|")
-(def frame (string :utf-8 :delimiters [delimiter]))
+(def ^:private frame (string :utf-8 :delimiters [delimiter]))
+
+(defn manifold-step 
+  ([] (s/stream))
+  ([s] (s/close! s))
+  ([s input] (s/put! s input)))
+
+(defn manifold-connect 
+  [in out] 
+  (s/connect in out {:upstream? true}))
+
+(defn assemble-phy 
+  [& outlines] 
+  (apply w/assemble manifold-step manifold-connect outlines))
 
 (defn- ^String delimit 
   [^String s]
@@ -32,7 +44,6 @@
   (let [index (.indexOf clients (:remote-addr client-info))]
     (if (> index -1)
       (do
-        ;Debug, take out
         (println "Client: " client-info " connected.")
         (f index ch))
       (throw (IllegalStateException. (str "Unexpected client, " client-info ", tried to connect to the server."))))))
@@ -121,7 +132,7 @@
   (when (>= (count (keys accumulation)) expected)   
     ;EW. Do something better than this in the future...
     (future
-      (Thread/sleep 15000)
+      (Thread/sleep 5000)
       (doall (map #(if (s/stream? %) (s/close! %)) streams)))))
 
 (defn elect-leader 
@@ -140,9 +151,7 @@
              :host (let [split (butlast (clojure.string/split ip #"\."))]
                      (str (clojure.string/join (interleave split (repeat (count split) "."))) "255"))}
         
-        system (w/assemble w/manifold-step
-                
-                           w/manifold-connect 
+        system (assemble-phy
                 
                            (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] msg))))
                 
@@ -179,6 +188,8 @@
   [pred coll] 
   (first (filter pred coll)))
 
+;Check to see if network is still cyclic...
+
 (defn cleanup 
   [system]
   ((:server (::cleanup system))))
@@ -193,53 +204,84 @@
         
         server (if (= leader ip) @(apply physi-server ip respondents))
         
-        client @client]    
+        client @client
+        
+        server-sys (atom {})]    
+    
+    (println leader respondents)
     
     (s/put! client (pr-str [requires provides ip]))  
     
     (if server      
       (let [woserver (dissoc server ::cleanup)        
             cs (keys woserver)
-            ss (vals woserver)]         
-   
-        @(d/chain (apply d/zip (map s/take! ss)) (fn [responses] 
-                                                   (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
-                                                                                                                            (read-string (b/convert r String))))))                                                                
-                                                                                   responses))]                                                                  
-                                                       (doall (map (fn [c connected-to]                                                                        
-                                                                     (doall (map (fn [x]
-                                                                                   (when-not (or (= (:ip x) leader) (= leader c))
-                                                                                     (println "Connecting " connected-to " to " c)
-                                                                                     (s/connect (get server (:ip x)) (get server c)))) 
-                                                                                 
-                                                                                 connected-to)))  
-                                                                   
-                                                                   cs                      
-                                                                   
-                                                                   (reduce (fn [coll c]   
-                                                                             (conj coll (filter (fn [x] 
-                                                                                                  (some (set (:requires (find-first #(= c (:ip %)) connections))) (:provides x)))                          
-                                                                                                connections)))                                                      
-                                                                           []                                                          
-                                                                           cs))))))
+            ss (vals woserver)]        
+           
+        (reset! server-sys @(d/chain (apply d/zip (map s/take! ss)) 
+                 
+                                   (fn [responses] 
+                                     (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
+                                                                                                              (read-string (b/convert r String))))))                                                                
+                                                                     responses))
+                         
+                                           cs' (vec (remove #(= leader %) cs))] 
+                                       ;generate dependencies!
+                     
+                                       (assemble-phy (->> 
+                                     
+                                                       (mapcat (fn [x] 
+                                               
+                                                                 (println (->> 
+                                                                            (let [pred (set (:requires (x connections)))]
+                                                                                                        (reduce (fn [coll r] 
+                                                                                                                  (if (and (some pred (:provides (r connections))) (not (= leader r)))
+                                                                                                                    (conj coll r)
+                                                                                                                    coll)) 
+                                                                                                                  cs') 
+                                                                                                        cs')
+                                                                            (cons leader)
+                                                                            (map keyword)
+                                                                            (distinct)))                                                                                           
+                                               
+                                                                 [(w/outline (make-key "providing-" x) []
+                                                                             (fn []                                            
+                                                                               (let [s (s/stream)]
+                                                                                 (s/connect-via (get server x) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
+                                                                                 s)))       
+                                                
+                                                                  (w/outline (make-key "receiving-" x)
+                                                                             (->> 
+                                                                               (let [pred (set (:requires (x connections)))]
+                                                                                                           (reduce (fn [coll r] 
+                                                                                                                     (if (and (some pred (:provides (r connections))) (not (= leader r)))
+                                                                                                                       (conj coll r)
+                                                                                                                       coll)) 
+                                                                                                                     cs') 
+                                                                                                           cs')
+                                                                               (cons leader)
+                                                                               (map keyword)
+                                                                               (distinct))
+                                                                             (fn [& streams] 
+                                                                               (doseq [s streams] 
+                                                                                 (s/connect s (get server x)))))])
+                                                               cs')
+                                     
+                                                       (cons (w/outline (make-key "provides-" leader) [] 
+                                                                        (fn []                                            
+                                                                          (let [s (s/stream)]
+                                                                            (s/connect-via (get server leader) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
+                                                                            s))))
+                                     
+                                                       (cons (w/outline (make-key "receiving-" leader) cs' 
+                                                                        (fn [& streams] 
+                                                                          (doseq [s streams] 
+                                                                            (s/connect s (get server leader)))))))))))
         
-        ;#### Connect every client to the server and vice-versa ####
+                ;#### Let all the clients know that everything is connected
         
-        (let [stream (s/stream)              
-              decoded (s/map #(b/convert % java.nio.ByteBuffer) stream)]     
-          (s/connect (get server ip) stream)         
-          (doseq [c cs]
-            (when-not (= c ip)
-              (s/connect decoded (get server c))
-              (s/connect (get server c) (get server ip)))))
-        
-        ;#### Let all the clients know that everything is connected
-        
-        (doseq [c cs]
-          (when-not (= c ip)          
-            (s/put! (get server c) (pr-str ::connected))))
-        
-        )
+                (doseq [c cs]
+                  (when-not (= c ip)          
+                    (s/put! (get server c) (pr-str ::connected))))))
       
       ;Add in more complex checks here in the future
       
@@ -251,7 +293,10 @@
       
         (let [ret {:client client}]
           (if server
-            (assoc ret :server server)
+            (do
+              (->              
+                (assoc ret :server @server-sys)
+                (update-in [:server ::cleanup] (fn [x] (comp (fn [] (doseq [s (vals server)] (s/close! s))) x)))))
             ret))
         
         (assoc :system 
@@ -271,60 +316,56 @@
                              requires)
                      
                      ps (mapv (fn [p] (w/outline (make-key "providing-" p) [p]                                       
-                                                 (fn [stream] (s/map (fn [x] #_(println "PROVIDING: " x) [p x]) stream))                                     
+                                                 (fn [stream] (s/map (fn [x] [p x]) stream))                                     
                                                  :data-out)) 
                    
                              provides)
                      
                      hb-resp (if (= leader ip)
-                               #_[(w/outline :heartbeat-respond [:client]                                       
-                                            (fn [stream] (selector (fn [packet]                                                                          
-                                                                     (let [[sndr msg] packet]
-                                                                       (if (= sndr :heartbeat)                                                                   
-                                                                         (do
-                                                                           (println "Got heartbeat from " msg ", on server!")
-                                                                           [(keyword (str "heartbeat-received-" msg))])))) stream))                               
-                                            :data-out)]
-                               []
+                               [(w/outline :heartbeat-respond [:client]                                       
+                                           (fn [stream] (selector (fn [packet]                                                                          
+                                                                    (let [[sndr msg] packet]
+                                                                      (if (= sndr :heartbeat)                                                                   
+                                                                        (do
+                                                                          (println "Got heartbeat from " msg ", on server!")
+                                                                          [(keyword (str "heartbeat-received-" msg))])))) stream))                               
+                                           :data-out)]
                                [])
                      
-                     hb-cl (if (= leader ip)
-                             []                           
-                             #_[(w/outline :heartbeat []
-                                  (fn [] (s/periodically 5000 (fn [] hb-vector)))
-                                  :data-out)
+                     hb-cl (if (= leader ip)                       
+                             [(w/outline :heartbeat []
+                                 (fn [] (s/periodically 5000 (fn [] hb-vector)))
+                                 :data-out)
                               
-                               (w/outline :heartbeat-receive 
-                                          [:client]
-                                          (fn [stream] 
-                                            (selector (fn [packet]                                                                                              
-                                                        (let [[sndr] packet]
-                                                          (if (= sndr rec-id)                                                                   
-                                                            (do
-                                                              (println "Got heartbeat on client!")
-                                                              status-map)))) stream)))
+                              (w/outline :heartbeat-receive 
+                                         [:client]
+                                         (fn [stream] 
+                                           (selector (fn [packet]                                                                                              
+                                                       (let [[sndr] packet]
+                                                         (if (= sndr rec-id)                                                                   
+                                                           (do
+                                                             (println "Got heartbeat on client!")
+                                                             status-map)))) stream)))
                               
-                               (w/outline 
-                                 :heartbeat-status 
-                                 [:heartbeat-receive]                      
-                                 (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))
+                              (w/outline 
+                                :heartbeat-status 
+                                [:heartbeat-receive]                      
+                                (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))
                               
-                               {:title :heartbeat-watch
-                                :tributaries [:heartbeat-status]
-                                :sieve (fn [streams stream] 
-                                         (s/consume (fn [x] 
-                                                      (if (= (:connection-status x) ::disconnected)
-                                                        (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
-                                                    (s/map identity stream)))
-                                :type :dam}
+                              {:title :heartbeat-watch
+                               :tributaries [:heartbeat-status]
+                               :sieve (fn [streams stream] 
+                                        (s/consume (fn [x] 
+                                                     (if (= (:connection-status x) ::disconnected)
+                                                       (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
+                                                   (s/map identity stream)))
+                               :type :dam}
                               
-                               (w/outline
-                                  :system-status
-                                  ;Change this to get a bunch of data...
-                                  [:heartbeat-status]
-                                  (fn [stream] (s/reduce merge (s/map identity stream))))
-                              
-                               ]
+                              (w/outline
+                                 :system-status
+                                 ;Change this to get a bunch of data...
+                                 [:heartbeat-status]
+                                 (fn [stream] (s/reduce merge (s/map identity stream))))]
                              [])
                      
                      ]               
@@ -365,8 +406,6 @@
                                                                                         
                    
                    ))))))
-
-  
   
   
   

@@ -7,6 +7,7 @@
             [watershed.core :as w]
             [taoensso.nippy :as nippy]
             [aleph.udp :as udp]
+            [networking.gt-test-math :as math]
             [watershed.utils :as u]))
 
 (use 'incanter.core 'gloss.core 'gloss.io)
@@ -25,12 +26,25 @@
 
 (def data-1 (s/stream))
 (def data-2 (s/stream))
+(def data-3 (s/stream))
+(def data-4 (s/stream))
+(def data-5 (s/stream))
+(def data-6 (s/stream))
+
+(def pos-3 (atom []))
+(def pos-4 (atom []))
+(def pos-5 (atom []))
+(def pos-6 (atom []))
 
 (defn parse-incoming-vrpn
   [[_ _ _ id :as msg]]
   (case id   
     1 (s/put! data-1 msg)
-    2 (s/put! data-2 msg)))
+    2 (s/put! data-2 msg)
+    3 (do (swap! pos-3 conj msg) (s/put! data-3 msg))
+    4 (do (swap! pos-4 conj msg) (s/put! data-4 msg))
+    5 (do (swap! pos-5 conj msg) (s/put! data-5 msg))
+    6 (do (swap! pos-6 conj msg) (s/put! data-6 msg))))
 
 (s/consume 
   parse-incoming-vrpn
@@ -74,24 +88,56 @@
 
 (def system-outline
  
-  [(w/outline :cloud [:agent-1 :agent-2] (fn [& streams] (s/map (fn [x] 
-                                                                  
-                                                                  (println "Cloud got: " x)
-                                                                  
-                                                                  (Thread/sleep 100)
-                                                                  
-                                                                  :cloud) (apply s/zip streams))))
+  [(w/outline :cloud [:one :two :three :four :five :six] (fn [& streams] (s/map math/cloud-fn (apply s/zip streams))))
+
+   (w/outline :one [:one :cloud] 
+              (fn 
+                ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 1])
+                ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
    
-   (w/outline :vrpn-1 [] #_(fn [] data-1) (fn [] (s/periodically 100 (fn [] [0 0 0 1]))))
+   (w/outline :two [:two :cloud] 
+                 (fn 
+                   ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 2])
+                   ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams))))) 
+      
+   #_(w/outline :three [:three :cloud] 
+                  (fn 
+                    ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 3])
+                    ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
    
-   (w/outline :vrpn-2 [] #_(fn [] data-2) (fn [] (s/periodically 100 (fn [] [0 0 0 2]))))])
+   #_(w/outline :four [:four :cloud] 
+                  (fn 
+                    ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 4])
+                    ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
+   
+   #_(w/outline :five [:five :cloud] 
+                  (fn 
+                    ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 5])
+                    ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
+   
+   (w/outline :six [:six :cloud] 
+                 (fn 
+                   ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 6])
+                   ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
+   
+   #_(w/outline :vrpn-1 [] (fn [] data-1))
+   
+   #_(w/outline :vrpn-2 [] (fn [] data-2))
+   
+   (w/outline :vrpn-3 [] (fn [] data-3))
+   
+   (w/outline :vrpn-4 [] (fn [] data-4))
+   
+   (w/outline :vrpn-5 [] (fn [] data-5))
+   
+   #_(w/outline :vrpn-6 [] (fn [] data-6))])
 
 (defn -main 
   [ip]
-  (let [t-sys (n/cpu {:ip ip :neighbors 3 :requires [:agent-1 :agent-2] :provides [:vrpn-1 :vrpn-2 :cloud]})
-      
-        sys (:system t-sys)]
-    
+  (let [t-sys (n/cpu {:ip ip :neighbors 4
+                      :requires [:three :four :five] 
+                      :provides [:vrpn-3 :vrpn-4 :vrpn-5 :cloud]})    
+        sys (:system t-sys)]   
     (apply w/assemble w/manifold-step w/manifold-connect (concat sys system-outline))))
 
 
