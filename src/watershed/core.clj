@@ -118,7 +118,9 @@
                                                     m)) 
                                                 {} outlines)
                                         
-                                        (assoc :all (mapv :title outlines)))
+                                        (assoc :all (mapv :title outlines))
+                                        
+                                        println)
                         
                                deps-expanded (map (fn [o] (assoc o :tributaries (expand-dependencies groups (:tributaries o)))) outlines) 
                         

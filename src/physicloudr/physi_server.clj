@@ -225,6 +225,7 @@
                                                                      responses))
                          
                                            cs' (vec (remove #(= leader %) cs))] 
+                                       
                                        ;generate dependencies!
                      
                                        (assemble-phy (->> 
@@ -275,13 +276,13 @@
                                                        (cons (w/outline (make-key "receiving-" leader) cs' 
                                                                         (fn [& streams] 
                                                                           (doseq [s streams] 
-                                                                            (s/connect s (get server leader)))))))))))
+                                                                            (s/connect s (get server leader))))))))))))
         
-                ;#### Let all the clients know that everything is connected
+        ;#### Let all the clients know that everything is connected
         
-                (doseq [c cs]
-                  (when-not (= c ip)          
-                    (s/put! (get server c) (pr-str ::connected))))))
+        (doseq [c cs]
+          (when-not (= c ip)          
+            (s/put! (get server c) (pr-str ::connected)))))
       
       ;Add in more complex checks here in the future
       
