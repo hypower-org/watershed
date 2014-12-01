@@ -19,5 +19,6 @@
                  [gloss "0.2.3"]
                  [aleph "0.4.0-alpha9"]]
   :plugins [[lein-nodisassemble "0.1.3"]]
-  :main networking.gt-test-bbb
-  :aot [networking.gt-test-bbb])
+  ;:main networking.gt-test-bbb
+  ;:aot [networking.gt-test-bbb]
+  )

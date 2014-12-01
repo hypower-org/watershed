@@ -1,10 +1,9 @@
 (ns networking.barebones-net-test
   (:require [watershed.core :as w]
-            [net.physi-server :as n]
+            [physicloudr.physi-server :as n]
             [manifold.stream :as s]
             [aleph.udp :as udp]
-            [manifold.deferred :as d])
-  (:gen-class))
+            [manifold.deferred :as d]))
 
 (defn parse-int [s]
    (Integer. (re-find  #"\d+" s )))

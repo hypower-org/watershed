@@ -1,6 +1,5 @@
 (ns watershed.core
-  (:require [clojure.pprint :as p]    
-            [manifold.deferred :as d]
+  (:require [manifold.deferred :as d]
             [watershed.graph :as g]
             [clojure.set :as st]
             [manifold.stream :as s]))
@@ -94,9 +93,7 @@
   (defn outline
     ([title tributaries sieve] (outline title tributaries sieve nil))
     ([title tributaries sieve group]
-      (if group 
-        (assoc o :title title :tributaries tributaries :sieve sieve :group group)
-        (assoc o :title title :tributaries tributaries :sieve sieve)))))
+      (assoc o :title title :tributaries tributaries :sieve sieve :group group))))
     
 (defn assemble 
   [step con & outlines] 
@@ -118,9 +115,7 @@
                                                     m)) 
                                                 {} outlines)
                                         
-                                        (assoc :all (mapv :title outlines))
-                                        
-                                        println)
+                                        (assoc :all (mapv :title outlines)))
                         
                                deps-expanded (map (fn [o] (assoc o :tributaries (expand-dependencies groups (:tributaries o)))) outlines) 
                         
