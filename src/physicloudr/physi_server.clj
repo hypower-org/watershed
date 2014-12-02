@@ -384,9 +384,7 @@
          
          sys (:system t-sys)
         
-         c-sys (do     
-                 (println (concat sys tasks))
-                 (apply assemble-phy (concat sys tasks)))]       
+         c-sys (apply assemble-phy (concat sys tasks))]       
     
     (let [status (find-first #(= (:title %) :system-status) c-sys)]      
       
