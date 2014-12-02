@@ -153,20 +153,20 @@
         
         system (assemble-phy
                 
-                           (w/outline :broadcast [] (fn [] (s/periodically udp-interval (fn [] msg))))
+                 (w/outline :broadcast [] (fn [] (s/periodically udp-interval (fn [] msg))))
                 
-                           (w/outline :connect [:broadcast] (fn [stream] (s/connect stream socket)))
+                 (w/outline :connect [:broadcast] (fn [stream] (s/connect stream socket)))
                          
-                           (w/outline :socket [] (fn [] (s/map (fn [x] (hash-map (:host x) x)) socket)))
+                 (w/outline :socket [] (fn [] (s/map (fn [x] (hash-map (:host x) x)) socket)))
                 
-                           (w/outline :result [:socket] (fn [x] (s/reduce merge (s/map identity x))))
+                 (w/outline :result [:socket] (fn [x] (s/reduce merge (s/map identity x))))
                 
-                           (w/outline :accumulator [:accumulator :socket]                                 
-                                           (fn 
-                                             ([] {})
-                                             ([& streams] (s/map acc-fn (apply s/zip streams)))))
+                 (w/outline :accumulator [:accumulator :socket]                                 
+                                 (fn 
+                                   ([] {})
+                                   ([& streams] (s/map acc-fn (apply s/zip streams)))))
                            
-                           (w/outline :watch [:accumulator [:all :without [:watch]]] (fn [stream & streams] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream)))))]
+                 (w/outline :watch [:accumulator [:all :without [:watch]]] (fn [stream & streams] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream)))))]
     
     (reduce (fn [max [k v]]  
               (let [[v' l'] (defrost (:message v))]
@@ -376,6 +376,29 @@
                                               (apply d/zip (doall (map #(s/put! client %) (encode' x))))                                            
                                               (println "A strange case happened.  Receieved something not a String to send over the network.")))  
                                           client)))))))))))
+
+(defn physicloud-instance
+  [{:keys [requires provides ip port neighbors udp-duration udp-interval udp-port] :as opts} & tasks] 
+  
+  (loop [t-sys (cpu opts)
+         
+         sys (:system t-sys)
+        
+         c-sys (do     
+                 (println (concat sys tasks))
+                 (apply assemble-phy (concat sys tasks)))]       
+    
+    (let [status (find-first #(= (:title %) :system-status) c-sys)]      
+      
+      (when (and status (= (:connection-status @(:output status)) ::disconnected))
+        (println "Connection lost!  Reconnecting...")
+        (let [t-sys (cpu opts)              
+              sys (:system t-sys)]                 
+          (recur t-sys          
+                 sys             
+                 (->>      
+                   (concat sys tasks)    
+                   (apply assemble-phy))))))))
   
   
   

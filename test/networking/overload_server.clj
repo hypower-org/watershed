@@ -11,49 +11,9 @@
 
 (def iterations (atom 0))
 
-(defn -main
-  [ip neighbors]
+(defn -main 
+  [ip neighbors] 
   
-  ;Provide initial data.
-  
-  (loop [t-sys (n/cpu {:ip ip 
-                       :neighbors (let [t (type neighbors)]
-                                    (if (= t java.lang.Long)
-                                      neighbors
-                                      (parse-int neighbors)))
-                       :requires [:overload] :provides []})
+  (n/physicloud-instance {:ip ip :neighbors neighbors :requires [:overload] :provides []}
          
-         sys (:system t-sys)
-        
-         c-sys (->>
-      
-                 sys
-                 
-                 (cons (w/outline :printer [:overload] (fn [stream] (s/consume #(swap! iterations inc) (s/map identity stream)))))
-      
-                 (apply n/assemble-phy))]
-    
-    (def system c-sys)  
-    
-    (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
-      
-      (when (and status (= (:connection-status @(:output status)) :physicloudr.physi-server/disconnected))
-        (println "Connection lost!  Reconnecting...")
-        (let [t-sys (n/cpu {:ip ip :neighbors (let [t (type neighbors)]
-                                                (if (= t java.lang.Long)
-                                                  neighbors
-                                                  (parse-int neighbors))) 
-                            :requires [:overload] :provides []})
-              sys (:system t-sys)]
-          
-          (recur t-sys
-          
-                 sys
-               
-                 (->>
-      
-                   sys
-                   
-                   (cons (w/outline :printer [:overload] (fn [stream] (s/consume #(swap! iterations inc) (s/map identity stream)))))
-      
-                   (apply n/assemble-phy))))))))
+         (w/outline :printer [:overload] (fn [stream] (s/consume (fn [x] (swap! iterations inc)) (s/map identity stream))))))
