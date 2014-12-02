@@ -11,7 +11,7 @@
                                                #{} nodes)}})                    
                       nodes))))
 
-(defn dfs-visit 
+(defn- dfs-visit 
   ([graph node time] (dfs-visit graph node time nil))
   ([graph node time tree] 
     (if tree 
@@ -47,7 +47,7 @@
                order)    
     (map persistent! trees)))
 
-(defn get-unmarked 
+(defn- get-unmarked 
   [graph] 
   (reduce 
     (fn [ret v]
@@ -57,7 +57,7 @@
     nil
     (keys graph)))
               
-(defn tally-dfs   
+(defn- tally-dfs   
   [dfs-result]   
   (->>   
     (map (fn [[k v]]            
@@ -76,7 +76,7 @@
       vec)
     (dfs-tree transpose-graph :order)))
 
-(defn incoming? 
+(defn- incoming? 
   [graph vertex] 
   (if vertex
     (some (comp vertex :edges) (vals graph))

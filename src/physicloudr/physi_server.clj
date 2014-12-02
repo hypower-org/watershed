@@ -129,7 +129,6 @@
 
 (defn- watch-fn   
   [streams accumulation expected] 
-  (println accumulation)
   (when (>= (count (keys accumulation)) expected)   
     ;EW. Do something better than this in the future...
     (future
@@ -167,7 +166,7 @@
                                              ([] {})
                                              ([& streams] (s/map acc-fn (apply s/zip streams)))))
                            
-                           (w/outline :watch [:accumulator [:all :without :watch]] (fn [stream & streams] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream)))))]
+                           (w/outline :watch [:accumulator [:all :without [:watch]]] (fn [stream & streams] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream)))))]
     
     (reduce (fn [max [k v]]  
               (let [[v' l'] (defrost (:message v))]
@@ -338,14 +337,12 @@
                                 [:heartbeat-receive]                      
                                 (fn [stream] (take-within identity stream 20000 {:connection-status ::disconnected})))
                               
-                              {:title :heartbeat-watch
-                               :tributaries [:heartbeat-status]
-                               :sieve (fn [streams stream] 
-                                        (s/consume (fn [x] 
-                                                     (if (= (:connection-status x) ::disconnected)
-                                                       (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
-                                                   (s/map identity stream)))
-                               :type :dam}
+                              (w/outline :heartbeat-watch [:heartbeat-status [:all :without [:heartbeat-watch]]]
+                                         (fn [stream & streams] 
+                                           (s/consume (fn [x] 
+                                                        (if (= (:connection-status x) ::disconnected)
+                                                          (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
+                                                      (s/map identity stream))))
                               
                               (w/outline
                                  :system-status
@@ -378,11 +375,7 @@
                                             (if-not (= (type x) java.lang.String)
                                               (apply d/zip (doall (map #(s/put! client %) (encode' x))))                                            
                                               (println "A strange case happened.  Receieved something not a String to send over the network.")))  
-                                          client)))))
-                   
-                                                                                        
-                   
-                   ))))))
+                                          client)))))))))))
   
   
   

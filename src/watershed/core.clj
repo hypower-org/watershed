@@ -26,9 +26,9 @@
   [env {:keys [title sieve tributaries]} _ _]  
   (assoc env title (apply sieve (map env tributaries))))
 
-(defmethod parse-outline :dam 
-  [env {:keys [title sieve tributaries]} _ _]
-  (assoc env title (apply sieve (cons (vals env) (map env tributaries)))))
+#_(defmethod parse-outline :dam 
+   [env {:keys [title sieve tributaries]} _ _]
+   (assoc env title (apply sieve (cons (vals env) (map env tributaries)))))
 
 (defmethod parse-outline :aliased 
   [env {:keys [title sieve tributaries]} _ con] 
@@ -43,7 +43,7 @@
   [groups dependencies]
   (vec (flatten (map (fn [dependency]                
                        (if (vector? dependency)                      
-                         (let [[id op & args] dependency] 
+                         (let [[id op args] dependency] 
                            (case op                            
                              :only (vec (filter (set args) (id groups)))
                              :without (vec (remove (set args) (id groups)))
@@ -143,8 +143,6 @@
         sources (filter #(= (:type %) :source) with-deps)
         
         cycles (filter #(= (:type %) :cyclic) with-deps)
-        
-        dams (filter #(= (:type %) :dam) with-deps)
                    
         ;#### First compiler pass... ####
               
@@ -169,8 +167,6 @@
                                       g/kahn-sort
                                             
                                       (map non-cyclic)))
-                                  
-                                  dams
                                            
                                   (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
        

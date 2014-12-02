@@ -1,6 +1,6 @@
 (ns networking.overload-client
   (:require [watershed.core :as w]
-            [net.physi-server :as n]
+            [physicloudr.physi-server :as n]
             [manifold.stream :as s]
             [aleph.udp :as udp]
             [manifold.deferred :as d])
@@ -29,7 +29,7 @@
                  
                  (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [(last (clojure.string/split ip #"\.")) :data!])))))
       
-                 (apply w/assemble w/manifold-step w/manifold-connect))]
+                 (apply n/assemble-phy))]
     
     
     (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
@@ -53,4 +53,4 @@
                    
                    (cons (w/outline :overload [] (fn [] (s/periodically 1 (fn [] [(last (clojure.string/split ip #"\.")) :data!])))))
       
-                   (apply w/assemble w/manifold-step w/manifold-connect))))))))
+                   (apply n/assemble-phy))))))))

@@ -20,5 +20,4 @@
                  [aleph "0.4.0-alpha9"]]
   :plugins [[lein-nodisassemble "0.1.3"] [jonase/eastwood "0.2.0"]]
   ;:main networking.gt-test-bbb
-  ;:aot [networking.gt-test-bbb]
-  )
+  #_:aot #_[networking.gt-test-bbb])
