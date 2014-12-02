@@ -26,7 +26,7 @@
       
                  sys
       
-                 (apply w/assemble w/manifold-step w/manifold-connect))]
+                 (apply n/assemble-phy))]
     
     
     (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
@@ -47,6 +47,6 @@
       
                    sys
       
-                   (apply w/assemble w/manifold-step w/manifold-connect))))))))
+                   (apply n/assemble-phy))))))))
     
 

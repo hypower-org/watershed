@@ -16,9 +16,9 @@
                  [org.clojure/core.match "0.2.1"]
                  [byte-streams "0.2.0-alpha4"]
                  [org.clojure/math.numeric-tower "0.0.4"]
-                 [gloss "0.2.3"]
+                 [gloss "0.2.4-SNAPSHOT"]
                  [aleph "0.4.0-alpha9"]]
-  :plugins [[lein-nodisassemble "0.1.3"]]
+  :plugins [[lein-nodisassemble "0.1.3"] [jonase/eastwood "0.2.0"]]
   ;:main networking.gt-test-bbb
   ;:aot [networking.gt-test-bbb]
   )

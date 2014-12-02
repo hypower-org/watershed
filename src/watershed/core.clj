@@ -6,17 +6,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn manifold-step 
-  ([] (s/stream))
-  ([s] (s/close! s))
-  ([s input] (s/put! s input)))
-
-(defn manifold-connect 
-  [in out] 
-  (s/connect in out {:upstream? true}))
-
 (defmulti parse-outline 
-  (fn [env outline step con ]
+  (fn [env outline step con]
     (:type outline)))
 
 (defmethod parse-outline :cyclic
@@ -54,8 +45,8 @@
                        (if (vector? dependency)                      
                          (let [[id op & args] dependency] 
                            (case op                            
-                             :only (vec (filter (set args) groups))
-                             :without (vec (remove (set args) groups))
+                             :only (vec (filter (set args) (id groups)))
+                             :without (vec (remove (set args) (id groups)))
                              (id groups)))                                                  
                          dependency))               
                      dependencies))))
@@ -71,23 +62,6 @@
   (reduce (fn [m {:keys [title]}]                      
             (assoc m title {:edges (dependents outlines title)}))                     
           {} outlines))
-
-;This is probably unnecessary
-
-(defn close 
-  "Given a step function, attempts to close all of the streams in the system."
-  [step & outlines] 
-  (let [streams (map :stream outlines)]
-  (if (some nil? outlines)
-    (throw (IllegalArgumentException. "All outlines have not been configured."))
-    (do 
-      (doseq [o outlines]
-        (println o)
-        (println (:type o))
-        (if-not (= (:type o) :estuary) 
-          (step (:stream o))))
-      (zipmap (map :title outlines) (map :stream outlines))))))
-
 
 (let [o {:title nil :tributaries nil :sieve nil}]
   (defn outline

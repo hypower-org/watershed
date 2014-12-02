@@ -33,7 +33,7 @@
 
 (defn encode' 
   [msg]
-  (encode frame (delimit (pr-str msg))))
+  (encode frame (pr-str msg)))
   
 (defn- defrost 
   [msg] 
@@ -129,6 +129,7 @@
 
 (defn- watch-fn   
   [streams accumulation expected] 
+  (println accumulation)
   (when (>= (count (keys accumulation)) expected)   
     ;EW. Do something better than this in the future...
     (future
@@ -139,21 +140,21 @@
   
   "Creates a UDP network to elect a leader.  Returns the leader and respondents [leader respondents]"
   
-  [ip number-of-neighbors & {:keys [duration interval port] :or {duration 5000 interval 1000 port 8999}}]
+  [ip number-of-neighbors {:keys [udp-duration udp-interval udp-port] :or {udp-duration 5000 udp-interval 1000 udp-port 8999}}]
   
   (let [leader (atom nil)
         
-        socket @(udp/socket {:port port :broadcast? true})
+        socket @(udp/socket {:port udp-port :broadcast? true})
         
         respondents (atom [])
         
-        msg {:message (nippy/freeze [(u/cpu-units) ip]) :port port 
+        msg {:message (nippy/freeze [(u/cpu-units) ip]) :port udp-port 
              :host (let [split (butlast (clojure.string/split ip #"\."))]
                      (str (clojure.string/join (interleave split (repeat (count split) "."))) "255"))}
         
         system (assemble-phy
                 
-                           (w/outline :broadcast [] (fn [] (s/periodically interval (fn [] msg))))
+                           (w/outline :broadcast [] (fn [] (s/periodically udp-interval (fn [] msg))))
                 
                            (w/outline :connect [:broadcast] (fn [stream] (s/connect stream socket)))
                          
@@ -161,16 +162,12 @@
                 
                            (w/outline :result [:socket] (fn [x] (s/reduce merge (s/map identity x))))
                 
-                           (w/outline :accumulator [:accumulator :socket] 
-                                
+                           (w/outline :accumulator [:accumulator :socket]                                 
                                            (fn 
                                              ([] {})
                                              ([& streams] (s/map acc-fn (apply s/zip streams)))))
-                
-                           {:title :watch
-                            :tributaries [:accumulator]
-                            :sieve (fn [streams stream] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream))) 
-                            :type :dam})]
+                           
+                           (w/outline :watch [:accumulator [:all :without :watch]] (fn [stream & streams] (s/consume #(watch-fn streams % number-of-neighbors) (s/map identity stream)))))]
     
     (reduce (fn [max [k v]]  
               (let [[v' l'] (defrost (:message v))]
@@ -195,10 +192,10 @@
   ((:server (::cleanup system))))
 
 (defn cpu 
-  [{:keys [requires provides ip port neighbors] :or {port 10000}}]
+  [{:keys [requires provides ip port neighbors udp-duration udp-interval udp-port] :or {port 10000} :as opts}]
   {:pre [(some? requires) (some? provides) (some? neighbors)]}
   
-  (let [[leader respondents] (elect-leader ip neighbors :port port) 
+  (let [[leader respondents] (elect-leader ip neighbors opts) 
         
         client (physi-client {:host leader :port port})     
         
@@ -225,56 +222,6 @@
                                            cs' (mapv keyword (remove #(= leader %) cs))] 
                                        
                                        ;generate dependencies!
-                                       
-                                       #_(println (->> 
-                                         
-                                                   (mapcat (fn [x] 
-                                               
-                                                             (println (->> 
-                                                                        (let [pred (set (:requires (get connections x)))]
-                                                                          (reduce (fn [coll r] 
-                                                                                    (if (some pred (:provides (get connections r)))
-                                                                                      (conj coll (make-key "providing-" r))
-                                                                                      coll))
-                                                                                  []
-                                                                                  cs'))
-                                                                        (cons (make-key "providing-" leader))
-                                                                        distinct
-                                                                        vec))                                                                                           
-                                               
-                                                             [(w/outline (make-key "providing-" x) []
-                                                                         (fn []                                            
-                                                                           (let [s (s/stream)]
-                                                                             (s/connect-via (get server x) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
-                                                                             s)))       
-                                                
-                                                              (w/outline (make-key "receiving-" x)
-                                                                         (->> 
-                                                                           (let [pred (set (:requires (get connections x)))]
-                                                                             (reduce (fn [coll r] 
-                                                                                       (if (some pred (:provides (get connections r)))
-                                                                                         (conj coll (make-key "providing-" r))
-                                                                                         coll))
-                                                                                     []
-                                                                                     cs'))
-                                                                           (cons (make-key "providing-" leader))
-                                                                           distinct
-                                                                           vec)
-                                                                         (fn [& streams] 
-                                                                           (doseq [s streams] 
-                                                                             (s/connect s (get server x)))))])
-                                                           cs')
-                                     
-                                                   (cons (w/outline (make-key "providing-" leader) [] 
-                                                                    (fn []                                            
-                                                                      (let [s (s/stream)]
-                                                                        (s/connect-via (get server leader) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
-                                                                        s))))
-                                     
-                                                   (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
-                                                                    (fn [& streams] 
-                                                                      (doseq [s streams] 
-                                                                        (s/connect s (get server leader))))))))
                      
                                        (apply assemble-phy (->> 
                                      
@@ -332,8 +279,8 @@
           (if server
             (do
               (->              
-                (assoc ret :server @server-sys)
-                println
+                (assoc ret :server server)
+                (assoc :server-sys @server-sys)
                 (update-in [:server ::cleanup] (fn [x] (comp (fn [] (doseq [s (vals server)] (s/close! s))) x)))))
             ret))
         
@@ -410,17 +357,15 @@
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client-converted [] (fn [] (s/map #(b/convert % java.nio.ByteBuffer) client))))
-                   
-                   (cons (w/outline :client [:client-converted] (fn [stream] 
+                   (cons (w/outline :client [] (fn [] 
                                                                   
-                                                                  (->> 
+                                                 (->> 
                                                                                                                                                  
-                                                                    (decode-stream stream frame)
+                                                   (decode-stream client frame)
                                                                     
-                                                                    (s/filter not-empty)
+                                                   (s/filter not-empty)
                                                                   
-                                                                    (s/map (fn [x] #_(println x) (read-string x)))))))                   
+                                                   (s/map (fn [x] (read-string x)))))))                   
                                     
                    (cons (w/outline :out 
                                     [[:data-out]] 
@@ -431,11 +376,8 @@
                                           s                                           
                                           (fn [x]                                                                                                    
                                             (if-not (= (type x) java.lang.String)
-                                              (do
-                                                #_(println "data: " x)
-                                                (apply d/zip (doall (map #(s/put! client %) (encode' x)))))
-                                              
-                                              (println "SPURIOUS")))  
+                                              (apply d/zip (doall (map #(s/put! client %) (encode' x))))                                            
+                                              (println "A strange case happened.  Receieved something not a String to send over the network.")))  
                                           client)))))
                    
                                                                                         
