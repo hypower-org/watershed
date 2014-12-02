@@ -31,6 +31,7 @@
       
                  (apply n/assemble-phy))]
     
+    (def system sys)  
     
     (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
       

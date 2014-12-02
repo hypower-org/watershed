@@ -31,7 +31,8 @@
       
                  (apply n/assemble-phy))]
     
-    
+    (def system sys)
+      
     (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
       
       (when (and status (= (:connection-status @(:output status)) :net.physi-server/disconnected))
