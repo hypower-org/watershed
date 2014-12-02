@@ -31,11 +31,11 @@
       
                  (apply n/assemble-phy))]
     
-    (def system sys)
+    (def system c-sys)
       
     (let [status (n/find-first #(= (:title %) :system-status) c-sys)]
       
-      (when (and status (= (:connection-status @(:output status)) :net.physi-server/disconnected))
+      (when (and status (= (:connection-status @(:output status)) :physicloudr.physi-server/disconnected))
         (println "Connection lost!  Reconnecting...")
         (let [t-sys (n/cpu {:ip ip :neighbors (let [t (type neighbors)]
                                                 (if (= t java.lang.Long)
