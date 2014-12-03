@@ -56,7 +56,7 @@
 (defn -main
   [ip] 
   (def robot (KobukiRobot. "/dev/ttyUSB0"))
-  (apply phy/physicloud-instance
+  (phy/physicloud-instance
          
          {:ip ip
           :neighbors 2
