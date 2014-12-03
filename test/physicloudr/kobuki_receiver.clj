@@ -75,7 +75,7 @@
                                                        (println "DESIRED POS: " x-d y-d)
                                                        (println "POS: " x y) (pid-fn x-d x y-d y theta)) stream)))
    
-         (w/outline :motor-controller [:pid] (fn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream)))))
+         (w/outline :motor-controller [:pid] (fn thisfn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream)))))
 
 
 
