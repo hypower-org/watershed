@@ -75,6 +75,7 @@
 
 (defn value-change 
   [new-value old-value] 
+  (println "ODOM: " new-value old-value)
   (if (and (> old-value 10000) (< new-value 10000))
     (+ (- (bit-and new-value 0xFFFF) old-value) 65536)
     (- new-value old-value)))
