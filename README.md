@@ -1,7 +1,6 @@
 Watershed
 =========
 
-<<<<<<< HEAD
 A library for defining and connecting streams.
 
 ![alt tag](http://www.montgomerycountymd.gov/DEP/Resources/Images/water/Outreach/What_is_a_Watershed_rockingham-nc.gif) 
@@ -14,8 +13,6 @@ More detail to come soon!
 
 This work was funded by the National Science Foundation through grant CNS-1239221.
 =======
-Check out the branch "Rewriting" for updates! :)
->>>>>>> refs/remotes/origin/master
 
 
 
