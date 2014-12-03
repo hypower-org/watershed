@@ -73,10 +73,10 @@
     5 :five
     6 :six))
 
-(defn value-change [new-value, old-value] 
-  "Computes the change between two values."
+(defn value-change 
+  [new-value old-value] 
   (if (and (> old-value 10000) (< new-value 10000))
-    (- (bit-and new-value 0xFFFF) old-value)
+    (+ (- (bit-and new-value 0xFFFF) old-value) 65536)
     (- new-value old-value)))
 
 (defn odom 
@@ -113,11 +113,11 @@
             :neighbors 2
             :requires [:cloud] :provides [(emit-agent-id id)]}
          
-           (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 100 stream))))
+           (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
            
            (emit-agent-outline id)
          
-           (w/outline :encoders [] (fn [] (s/periodically 100 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
+           (w/outline :encoders [] (fn [] (s/periodically 50 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
    
            (w/outline :odom [:odom :encoders] (fn 
                                                 ([] [0 0 0 0 0])
