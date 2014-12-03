@@ -1,4 +1,4 @@
-(ns physicloudr.kobuki-test
+(ns physicloudr.kobuki-basic
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
