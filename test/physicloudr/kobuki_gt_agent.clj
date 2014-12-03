@@ -126,7 +126,8 @@
    
            (w/outline :pid [:odom :sampled-position] (fn [& streams] (s/map (fn [[[_ _ x y theta] [x-d y-d]]]  
                                                                               (println "DESIRED POS: " x-d y-d)
-                                                                              (println "POS: " x y) (pid-fn x-d x y-d y theta)) 
+                                                                              (println "POS: " x y) 
+                                                                              (pid-fn x-d x y-d y theta)) 
                                                                             (apply s/zip streams))))
    
            (w/outline :motor-controller [:pid] (fn thisfn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream))))))
