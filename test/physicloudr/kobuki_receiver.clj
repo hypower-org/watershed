@@ -64,7 +64,7 @@
          
          (w/outline :encoders [] (fn [] (s/periodically 100 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
    
-         (w/outline :sampled-position [:position] (fn [stream] (apply sample 100 stream)))
+         (w/outline :sampled-position [:position] (fn [stream] (sample 100 stream)))
    
          (w/outline :odom [:odom :encoders :sampled-position] (fn 
                                                        ([] [0 0 0 0 0])
