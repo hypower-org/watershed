@@ -104,7 +104,8 @@
   
   (def robot (KobukiRobot. "/dev/ttyUSB0"))
   
-  (let [id (read-string id)]
+  (let [id (read-string id)
+        a-id (dec id)]
     
     (phy/physicloud-instance
          
@@ -112,7 +113,7 @@
             :neighbors 2
             :requires [:cloud] :provides [(emit-agent-id id)]}
          
-           (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x id) (y id)]) (sample 100 stream))))
+           (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 100 stream))))
            
            (emit-agent-outline id)
          

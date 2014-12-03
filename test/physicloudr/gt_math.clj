@@ -77,7 +77,7 @@
   [agent-states]
   (let [states (mapv (fn [[x y _ id]] [(x (dec id)) (y (dec id))]) agent-states)
         u ((first agent-states) 2)]    
-    (println states)
+    (Thread/sleep 10)
     [(mapv first states) (mapv second states) (ebe+ u (s-times step-size (global-constraint states)))]))
 
 
