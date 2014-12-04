@@ -77,7 +77,7 @@
   [new-value old-value] 
   (println "ODOM: " new-value old-value)
   (if (and (> old-value 10000) (< new-value 10000))
-    (+ (- (bit-and new-value 0xFFFF) old-value) 65536)
+    (+ (- (bit-and new-value 0xFFFF) old-value) 32768)
     (- new-value old-value)))
 
 (defn odom 
