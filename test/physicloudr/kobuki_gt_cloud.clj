@@ -17,15 +17,15 @@
     
     (w/outline :cloud [:one :two :three :four :five :six] (fn [& streams] (s/map math/cloud-fn (apply s/zip streams))))
 
-    #_(w/outline :one [:one :cloud] 
-                (fn 
-                  ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 1])
-                  ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
+    (w/outline :one [:one :cloud] 
+               (fn 
+                 ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 1])
+                 ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
    
-    (w/outline :two [:two :cloud] 
-                  (fn 
-                    ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 2])
-                    ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams))))) 
+    #_(w/outline :two [:two :cloud] 
+                   (fn 
+                     ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 2])
+                     ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams))))) 
       
     (w/outline :three [:three :cloud] 
                   (fn 

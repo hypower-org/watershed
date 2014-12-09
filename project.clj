@@ -20,5 +20,5 @@
                  [gloss "0.2.4-SNAPSHOT"]
                  [aleph "0.4.0-alpha9"]]
   :plugins [[lein-nodisassemble "0.1.3"] [jonase/eastwood "0.2.0"]]
-  ;:main networking.gt-test-bbb
-  #_:aot #_[networking.gt-test-bbb])
+  :main physicloudr.kobuki-gt-agent
+  :aot [physicloudr.kobuki-gt-agent])

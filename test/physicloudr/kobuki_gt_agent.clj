@@ -105,7 +105,7 @@
   (lyap x-d x y-d y (atan2 (- y-d y) (- x-d x)) theta))
 
 (defn -main
-  [ip id] 
+  [ip id neighbors] 
   
   (def robot (KobukiRobot. "/dev/ttyUSB0"))
   
@@ -115,7 +115,7 @@
     (phy/physicloud-instance
          
            {:ip ip
-            :neighbors 2
+            :neighbors (read-string neighbors)
             :requires [:cloud] :provides [(emit-agent-id id)]}
          
            (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
