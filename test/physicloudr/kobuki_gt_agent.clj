@@ -76,9 +76,11 @@
 (defn value-change 
   [new-value old-value] 
   (println "ODOM: " new-value old-value)
-  (let [result (if (and (> old-value 10000) (< new-value 10000))
+  (let [result (if (and (> old-value 60000) (< new-value 10000))
                  (+ (- new-value old-value) 65536)
-                 (- new-value old-value))]
+                 (if (and (> new-value 60000) (< old-value 1000))
+                   (- new-value old-value 65536)
+                   (- new-value old-value)))]
     (println result) 
     result))
 
