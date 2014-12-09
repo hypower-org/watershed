@@ -291,7 +291,7 @@
                      
                      rec-id (keyword (str "heartbeat-received-" id))
                      
-                     status-map {:connection-status ::connected}
+                     status-map {:connection-status ::connected}             
                      
                      rs (mapv (fn [r] (w/outline r [:client] (fn [stream] 
                                                                (selector (fn [packet]                                                                                              

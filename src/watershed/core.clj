@@ -26,10 +26,6 @@
   [env {:keys [title sieve tributaries]} _ _]  
   (assoc env title (apply sieve (map env tributaries))))
 
-#_(defmethod parse-outline :dam 
-   [env {:keys [title sieve tributaries]} _ _]
-   (assoc env title (apply sieve (cons (vals env) (map env tributaries)))))
-
 (defmethod parse-outline :aliased 
   [env {:keys [title sieve tributaries]} _ con] 
   (con (apply sieve (map env tributaries)) (title env))
@@ -63,11 +59,12 @@
             (assoc m title {:edges (dependents outlines title)}))                     
           {} outlines))
 
-(let [o {:title nil :tributaries nil :sieve nil}]
-  (defn outline
-    ([title tributaries sieve] (outline title tributaries sieve nil))
-    ([title tributaries sieve group]
-      (assoc o :title title :tributaries tributaries :sieve sieve :group group))))
+(def ^{:private true} o {:title nil :tributaries nil :sieve nil :group nil})
+
+(defn outline
+  ([title tributaries sieve] (outline title tributaries sieve nil))
+  ([title tributaries sieve group]
+    (assoc o :title title :tributaries tributaries :sieve sieve :group group)))
     
 (defn assemble 
   [step con & outlines] 
