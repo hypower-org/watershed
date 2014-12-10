@@ -75,7 +75,7 @@
 
 (defn value-change 
   [new-value old-value] 
-  (println "ODOM: " new-value old-value)
+  ;(println "ODOM: " new-value old-value)
   (let [result (if (and (> old-value 60000) (< new-value 10000))
                  (+ (- new-value old-value) 65536)
                  (if (and (> new-value 60000) (< old-value 1000))
@@ -119,6 +119,8 @@
          
            (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
            
+           (w/outline :data-printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
+           
            (emit-agent-outline id)
          
            (w/outline :encoders [] (fn [] (s/periodically 50 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
@@ -129,8 +131,8 @@
                                                                     (apply s/zip streams)))))
    
            (w/outline :pid [:odom :sampled-position] (fn [& streams] (s/map (fn [[[_ _ x y theta] [x-d y-d]]]  
-                                                                              (println "DESIRED POS: " x-d y-d)
-                                                                              (println "POS: " x y) 
+                                                                              ;(println "DESIRED POS: " x-d y-d)
+                                                                              ;(println "POS: " x y) 
                                                                               (pid-fn x-d x y-d y theta)) 
                                                                             (apply s/zip streams))))
    

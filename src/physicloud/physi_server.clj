@@ -218,36 +218,34 @@
                                                                                                               (read-string (b/convert r String))))))                                                                
                                                                      responses))
                          
-                                           cs' (mapv keyword (remove #(= leader %) cs))] 
-                                       
-                                       ;generate dependencies!
-                     
-                                       (apply assemble-phy (->> 
+                                           cs' (mapv keyword (remove #(= leader %) cs))
+                                           
+                                           sys (->> 
                                      
-                                                             (mapcat (fn [x]                                                                                           
+                                                 (mapcat (fn [x]                                                                                           
                                                
-                                                                       [(w/outline (make-key "providing-" x) []
-                                                                                   (fn []                                            
-                                                                                     (let [s (s/stream)]
-                                                                                       (s/connect-via (get server (name x)) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
-                                                                                       s)))       
+                                                           [(w/outline (make-key "providing-" x) []
+                                                                       (fn []                                            
+                                                                         (let [s (s/stream)]
+                                                                           (s/connect-via (get server (name x)) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
+                                                                           s)))       
                                                 
-                                                                        (w/outline (make-key "receiving-" x)
-                                                                                   (->> 
-                                                                                     (let [pred (set (:requires (get connections x)))]
-                                                                                       (reduce (fn [coll r] 
-                                                                                                 (if (some pred (:provides (get connections r)))
-                                                                                                   (conj coll (make-key "providing-" r))
-                                                                                                   coll)) 
-                                                                                               []
-                                                                                               cs'))
-                                                                                     (cons (make-key "providing-" leader))
-                                                                                     distinct
-                                                                                     vec)
-                                                                                   (fn [& streams] 
-                                                                                     (doseq [s streams] 
-                                                                                       (s/connect s (get server (name x))))))])
-                                                                     cs')
+                                                            (w/outline (make-key "receiving-" x)
+                                                                       (->> 
+                                                                         (let [pred (set (:requires (get connections x)))]
+                                                                           (reduce (fn [coll r] 
+                                                                                     (if (some pred (:provides (get connections r)))
+                                                                                       (conj coll (make-key "providing-" r))
+                                                                                       coll)) 
+                                                                                   []
+                                                                                   cs'))
+                                                                         (cons (make-key "providing-" leader))
+                                                                         distinct
+                                                                         vec)
+                                                                       (fn [& streams] 
+                                                                         (doseq [s streams] 
+                                                                           (s/connect s (get server (name x))))))])
+                                                         cs')
                                      
                                                              (cons (w/outline (make-key "providing-" leader) [] 
                                                                               (fn []                                            
@@ -258,7 +256,13 @@
                                                              (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
                                                                               (fn [& streams] 
                                                                                 (doseq [s streams] 
-                                                                                  (s/connect s (get server leader))))))))))))
+                                                                                  (s/connect s (get server leader)))))))] 
+                                       
+                                       (println sys)
+                                       
+                                       ;generate dependencies!
+                     
+                                       (apply assemble-phy sys)))))
         
         ;#### Let all the clients know that everything is connected
         

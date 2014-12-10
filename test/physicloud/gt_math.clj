@@ -69,7 +69,7 @@
     (let [new-state (->
                       (assoc state 0 (update-in x [(dec id)] (fn [x'] (- x' (* step-size (+ o'x (dot u g'x)))))))
                       (assoc 1 (update-in y [(dec id)] (fn [y'] (- y' (* step-size (+ o'y (dot u g'y))))))))]
-      (when (= id 1)
+      (when (= id 6)
         (reset! current-state new-state))
       new-state)))
 
