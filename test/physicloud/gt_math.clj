@@ -1,4 +1,4 @@
-(ns physicloudr.gt-math
+(ns physicloud.gt-math
   (:require [watershed.core :as w]
             [manifold.stream :as s])
   (:use [incanter.core]))

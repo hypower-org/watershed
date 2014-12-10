@@ -1,8 +1,8 @@
-(ns physicloudr.kobuki-receiver
+(ns physicloud.kobuki-receiver
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [physicloudr.physi-server :as phy])
+            [physicloud.physi-server :as phy])
   (:use [incanter.core])
   (:import [edu.ycp.robotics KobukiRobot])
   (:gen-class))

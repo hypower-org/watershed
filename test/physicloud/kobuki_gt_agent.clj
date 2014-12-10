@@ -1,9 +1,9 @@
-(ns physicloudr.kobuki-gt-agent
+(ns physicloud.kobuki-gt-agent
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [physicloudr.physi-server :as phy]
-            [physicloudr.gt-math :as math])
+            [physicloud.physi-server :as phy]
+            [physicloud.gt-math :as math])
   (:import [edu.ycp.robotics KobukiRobot])
   (:gen-class))
 
@@ -81,7 +81,6 @@
                  (if (and (> new-value 60000) (< old-value 1000))
                    (- new-value old-value 65536)
                    (- new-value old-value)))]
-    (println result) 
     result))
 
 (defn odom 

@@ -1,6 +1,6 @@
-(ns networking.kobuki-remote-gui
+(ns physicloud.kobuki-remote-gui
   (:require [watershed.core :as w]
-            [net.physi-server :as n]
+            [physicloud.physi-server :as n]
             [manifold.stream :as s]
             [aleph.udp :as udp]
             [taoensso.nippy :as nippy]

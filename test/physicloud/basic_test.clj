@@ -1,8 +1,8 @@
-(ns physicloudr.basic-test
+(ns physicloud.basic-test
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [physicloudr.physi-server :as phy]))
+            [physicloud.physi-server :as phy]))
 
 (defn -main
   [ip neighbors]

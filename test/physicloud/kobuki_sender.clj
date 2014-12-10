@@ -1,8 +1,8 @@
-(ns physicloudr.kobuki-sender
+(ns physicloud.kobuki-sender
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [physicloudr.physi-server :as phy]))
+            [physicloud.physi-server :as phy]))
 
 (defn -main 
   [ip] 

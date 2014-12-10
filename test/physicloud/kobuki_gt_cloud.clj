@@ -1,19 +1,19 @@
-(ns physicloudr.kobuki-gt-cloud
+(ns physicloud.kobuki-gt-cloud
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [physicloudr.physi-server :as phy]
-            [physicloudr.gt-math :as math]))
+            [physicloud.physi-server :as phy]
+            [physicloud.gt-math :as math]))
 
 (defn -main 
-  [ip] 
+  [ip neighbors] 
   
   (phy/physicloud-instance 
     
     {:ip ip
-     :neighbors 2
+     :neighbors neighbors
      :provides [:cloud] 
-     :requires [:one]}
+     :requires [:two]}
     
     (w/outline :cloud [:one :two :three :four :five :six] (fn [& streams] (s/map math/cloud-fn (apply s/zip streams))))
 
