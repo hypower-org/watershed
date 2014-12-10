@@ -366,20 +366,29 @@
                                                                     
                                                    (s/filter not-empty)
                                                                   
-                                                   (s/map (fn [x] (read-string x)))))))                   
-                                    
+                                                   (s/map (fn [x] (read-string x)))))))    
+                   
                    (cons (w/outline :out 
-                                    [[:data-out]] 
-                                    (fn 
-                                      [& streams] 
-                                      (doseq [s streams]                                               
-                                        (s/connect-via
-                                          s                                           
-                                          (fn [x]                                                                                                    
-                                            (if-not (= (type x) java.lang.String)
-                                              (apply d/zip (doall (map #(s/put! client %) (encode' x))))                                            
-                                              (println "A strange case happened.  Receieved something not a String to send over the network.")))  
-                                          client)))))))))))
+                                     [[:data-out]] 
+                                     (fn 
+                                       [& streams] 
+                                       (let [out-s (s/stream)]
+                                         (doseq [s streams] 
+                                           (s/connect s out-s))
+                                         (c/connect-via out-s (fn [x] (println "SENDING: " x) (doall (map #(s/put! client %) (encode' x)))) client)))))
+                                    
+                   #_(cons (w/outline :out 
+                                     [[:data-out]] 
+                                     (fn 
+                                       [& streams] 
+                                       (doseq [s streams]                                               
+                                         (s/connect-via
+                                           s                                           
+                                           (fn [x]                                                                                                    
+                                             (if-not (= (type x) java.lang.String)
+                                               (apply d/zip (doall (map #(s/put! client %) (encode' x))))                                            
+                                               (println "A strange case happened.  Receieved something not a String to send over the network.")))  
+                                           client)))))))))))
 
 (defn physicloud-instance
   [{:keys [requires provides ip port neighbors udp-duration udp-interval udp-port] :as opts} & tasks] 
