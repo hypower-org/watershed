@@ -244,7 +244,7 @@
                                                                          vec)
                                                                        (fn [& streams] 
                                                                          (doseq [s streams] 
-                                                                           (s/connect s (get server (name x))))))])
+                                                                           (s/connect (s/map identity s) (get server (name x))))))])
                                                          cs')
                                      
                                                              (cons (w/outline (make-key "providing-" leader) [] 
@@ -256,7 +256,7 @@
                                                              (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
                                                                               (fn [& streams] 
                                                                                 (doseq [s streams] 
-                                                                                  (s/connect s (get server leader)))))))] 
+                                                                                  (s/connect (s/map identity s) (get server leader)))))))] 
                                        
                                        (println sys)
                                        
