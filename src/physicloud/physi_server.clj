@@ -375,7 +375,7 @@
                                        (let [out-s (s/stream)]
                                          (doseq [s streams] 
                                            (s/connect s out-s))
-                                         (s/connect-via out-s (fn [x] (println "SENDING: " x) (doall (map #(s/put! client %) (encode' x)))) client)))))
+                                         (s/connect-via out-s (fn [x] (println "SENDING: " x) (d/zip (doall (map #(s/put! client %) (encode' x))))) client)))))
                                     
                    #_(cons (w/outline :out 
                                      [[:data-out]] 
