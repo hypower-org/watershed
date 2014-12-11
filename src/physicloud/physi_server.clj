@@ -99,7 +99,7 @@
                                 (if result (s/put! output result))) 
                               (d/recur (s/take! s))))))))        
          output))
-
+      
 (defn take-within 
   [fn' stream timeout default] 
   (let [s (s/map identity stream)
@@ -244,9 +244,11 @@
                                                                          distinct
                                                                          vec)
                                                                        (fn [& streams] 
-                                                                         (let [recipient (get server (name x))]
+                                                                         (let [recipient (get server (name x))                                                  
+                                                                          intermediate (s/stream)]
                                                                            (doseq [s streams] 
-                                                                             (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! recipient %) (encode' x))))) recipient)))))])
+                                                                             (s/connect-via s (fn [x] (s/put! intermediate (encode' x))) intermediate))
+                                                                           (s/connect-via intermediate (fn [x] (d/zip (doall (map #(s/put! recipient %) x)))) recipient))))])
                                                          cs')
                                      
                                                  (cons (w/outline (make-key "providing-" leader) [] 
@@ -258,9 +260,11 @@
                                      
                                                  (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
                                                                   (fn [& streams] 
-                                                                    (doseq [s streams] 
-                                                                      (let [recipient (get server leader)]
-                                                                        (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! recipient %) (encode' x))))) recipient)))))))] 
+                                                                    (let [recipient (get server leader)                                                  
+                                                                          intermediate (s/stream)]
+                                                                      (doseq [s streams] 
+                                                                        (s/connect-via s (fn [x] (s/put! intermediate (encode' x))) intermediate))
+                                                                      (s/connect-via intermediate (fn [x] (d/zip (doall (map #(s/put! recipient %) x)))) recipient))))))] 
                                        
                                        ;generate dependencies!
                      
