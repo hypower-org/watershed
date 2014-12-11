@@ -227,7 +227,7 @@
                                                            [(w/outline (make-key "providing-" x) []
                                                                        (fn []                                            
                                                                          (let [s (s/stream)]
-                                                                           (s/connect-via (get server (name x)) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
+                                                                           (s/connect-via (get server (name x)) (fn [msg] (println "PROVIDING: " x " " msg) (s/put! s (b/convert msg java.nio.ByteBuffer))) s)
                                                                            s)))       
                                                 
                                                             (w/outline (make-key "receiving-" x)
@@ -244,7 +244,7 @@
                                                                          vec)
                                                                        (fn [& streams] 
                                                                          (doseq [s streams] 
-                                                                           (s/connect (s/map identity s) (get server (name x))))))])
+                                                                           (s/connect s (get server (name x))))))])
                                                          cs')
                                      
                                                              (cons (w/outline (make-key "providing-" leader) [] 
@@ -256,7 +256,7 @@
                                                              (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
                                                                               (fn [& streams] 
                                                                                 (doseq [s streams] 
-                                                                                  (s/connect (s/map identity s) (get server leader)))))))] 
+                                                                                  (s/connect s (get server leader)))))))] 
                                        
                                        (println sys)
                                        
@@ -372,23 +372,8 @@
                                      [[:data-out]] 
                                      (fn 
                                        [& streams] 
-                                       (let [out-s (s/stream)]
-                                         (doseq [s streams] 
-                                           (s/connect s out-s))
-                                         (s/connect-via out-s (fn [x] (println "SENDING: " x) (d/zip (doall (map #(s/put! client %) (encode' x))))) client)))))
-                                    
-                   #_(cons (w/outline :out 
-                                     [[:data-out]] 
-                                     (fn 
-                                       [& streams] 
-                                       (doseq [s streams]                                               
-                                         (s/connect-via
-                                           s                                           
-                                           (fn [x]                                                                                                    
-                                             (if-not (= (type x) java.lang.String)
-                                               (apply d/zip (doall (map #(s/put! client %) (encode' x))))                                            
-                                               (println "A strange case happened.  Receieved something not a String to send over the network.")))  
-                                           client)))))))))))
+                                       (doseq [s streams] 
+                                         (s/connect-via s (fn [x] (println "SENDING: " x) (d/zip (doall (map #(s/put! client %) (encode' x))))) client)))))))))))
 
 (defn physicloud-instance
   [{:keys [requires provides ip port neighbors udp-duration udp-interval udp-port] :as opts} & tasks] 
