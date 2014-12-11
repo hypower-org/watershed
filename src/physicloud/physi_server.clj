@@ -257,8 +257,8 @@
                                                  (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
                                                                   (fn [& streams] 
                                                                     (doseq [s streams] 
-                                                                      (let [leader-s (get server leader)]
-                                                                        (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! leader %) (encode' x))))) leader)))))))] 
+                                                                      (let [recipient (get server leader)]
+                                                                        (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! recipient %) (encode' x))))) recipient)))))))] 
                                        
                                        ;generate dependencies!
                      
