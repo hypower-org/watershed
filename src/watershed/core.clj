@@ -168,17 +168,10 @@
                                   (map (fn [o] (assoc o :type :aliased)) (concat sources cycles))))]
        
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
+    
+    (doseq [o (filter (comp (set (mapcat (fn [group] (g/fvs (make-graph (filter (comp (set group) :title) cycles)))) sccs)) :title) cycles)]    
       
-    (doseq [o (mapcat              
-                (fn [scc-group]         
-                  (let [max-deps (reduce (fn [max o]                   
-                                           (if (> (count (:tributaries o)) (count (:tributaries max)))
-                                             o
-                                             max))                            
-                                         (filter (comp (set scc-group) :title) cycles))] 
-                    (filter (comp (set (:tributaries max-deps)) :title) cycles)))          
-                sccs)]    
-      (step ((:title o) env) ((:sieve o))))
+       (step ((:title o) env) ((:sieve o))))
     
     ;#### Associate streams back into the outlines! ####
 
@@ -187,7 +180,7 @@
 (defn output 
   "Retrieves the output of a given body" 
   [title & outlines]  
-  (:output (first (filter #(= (:title %) title) outlines))))                
+  (:output (first (filter #(= (:title %) title) outlines))))  
 
 
 
