@@ -379,7 +379,7 @@
                                      (fn 
                                        [& streams] 
                                        (doseq [s streams] 
-                                         (s/connect-via s (fn [x] (println "SENDING: " x) (d/zip (doall (map #(s/put! client %) (encode' x))))) client)))))))))))
+                                         (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! client %) (encode' x))))) client)))))))))))
 
 (defn physicloud-instance
   [{:keys [requires provides ip port neighbors udp-duration udp-interval udp-port] :as opts} & tasks] 

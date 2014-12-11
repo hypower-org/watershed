@@ -119,7 +119,7 @@
          
            (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
            
-           (w/outline :data-printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
+           #_(w/outline :data-printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
            
            (emit-agent-outline id)
          
@@ -131,8 +131,8 @@
                                                                     (apply s/zip streams)))))
    
            (w/outline :pid [:odom :sampled-position] (fn [& streams] (s/map (fn [[[_ _ x y theta] [x-d y-d]]]  
-                                                                              ;(println "DESIRED POS: " x-d y-d)
-                                                                              ;(println "POS: " x y) 
+                                                                              (println "DESIRED POS: " x-d y-d)
+                                                                              (println "POS: " x y) 
                                                                               (pid-fn x-d x y-d y theta)) 
                                                                             (apply s/zip streams))))
    
