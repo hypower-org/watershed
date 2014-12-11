@@ -226,9 +226,9 @@
                                                
                                                            [(w/outline (make-key "providing-" x) []
                                                                        (fn []                                            
-                                                                         (let [s (s/stream)]
-                                                                           (s/connect-via (get server (name x)) (fn [msg] (println "PROVIDING: " x " " msg) (s/put! s (b/convert msg java.nio.ByteBuffer))) s)
-                                                                           s)))       
+                                                                         (->> 
+                                                                           (decode-stream (get server (name x)) frame)                                                                  
+                                                                           (s/filter not-empty))))       
                                                 
                                                             (w/outline (make-key "receiving-" x)
                                                                        (->> 
@@ -243,22 +243,22 @@
                                                                          distinct
                                                                          vec)
                                                                        (fn [& streams] 
-                                                                         (doseq [s streams] 
-                                                                           (s/connect s (get server (name x))))))])
+                                                                         (let [recipient (get server (name x))]
+                                                                           (doseq [s streams] 
+                                                                             (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! recipient %) (encode' x))))) recipient)))))])
                                                          cs')
                                      
-                                                             (cons (w/outline (make-key "providing-" leader) [] 
-                                                                              (fn []                                            
-                                                                                (let [s (s/stream)]
-                                                                                  (s/connect-via (get server leader) (fn [x] (s/put! s (b/convert x java.nio.ByteBuffer))) s)
-                                                                                  s))))
+                                                 (cons (w/outline (make-key "providing-" leader) [] 
+                                                                  (fn []                                            
+                                                                    (->> 
+                                                                      (decode-stream (get server leader) frame)                                                                  
+                                                                      (s/filter not-empty)))))
                                      
-                                                             (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
-                                                                              (fn [& streams] 
-                                                                                (doseq [s streams] 
-                                                                                  (s/connect s (get server leader)))))))] 
-                                       
-                                       (println sys)
+                                                 (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
+                                                                  (fn [& streams] 
+                                                                    (doseq [s streams] 
+                                                                      (let [leader-s (get server leader)]
+                                                                        (s/connect-via s (fn [x] (d/zip (doall (map #(s/put! leader %) (encode' x))))) leader)))))))] 
                                        
                                        ;generate dependencies!
                      
