@@ -228,7 +228,8 @@
                                                                        (fn []                                            
                                                                          (->> 
                                                                            (decode-stream (get server (name x)) frame)                                                                  
-                                                                           (s/filter not-empty))))       
+                                                                           (s/filter not-empty)
+                                                                           (s/map (fn [x] (read-string x))))))       
                                                 
                                                             (w/outline (make-key "receiving-" x)
                                                                        (->> 
@@ -252,7 +253,8 @@
                                                                   (fn []                                            
                                                                     (->> 
                                                                       (decode-stream (get server leader) frame)                                                                  
-                                                                      (s/filter not-empty)))))
+                                                                      (s/filter not-empty)
+                                                                      (s/map (fn [x] (read-string x)))))))
                                      
                                                  (cons (w/outline (make-key "receiving-" leader) (mapv #(make-key "providing-" %) cs') 
                                                                   (fn [& streams] 
