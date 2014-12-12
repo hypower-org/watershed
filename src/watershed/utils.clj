@@ -2,6 +2,10 @@
   (:use [clojure.java.shell :only [sh]])
   (:require [no.disassemble :as d]))
 
+(defn | 
+  [init & fns] 
+  ((apply comp (reverse fns)) init))
+
 (defn time-now 
   []
   "Returns the current time"

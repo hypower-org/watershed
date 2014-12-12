@@ -205,8 +205,11 @@
     
     ;Ensure that removal of vertices makes a DAG
   
-    (when (kahn-sort (reduce remove-vertex graph result))
-      result)))
+    (if (kahn-sort (reduce remove-vertex graph result))
+      result
+      (do 
+        (println "WARNING: cycles may not start correctly!")
+        result))))
   
   
 

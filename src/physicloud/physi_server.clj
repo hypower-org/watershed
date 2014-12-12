@@ -111,7 +111,7 @@
                          
                  (w/outline :socket [] (fn [] (s/map (fn [x] (hash-map (:host x) x)) socket)))
                 
-                 (w/outline :result [:socket] (fn [x] (s/reduce merge (s/map identity x))))
+                 (w/outline :result [:socket] (fn [x] (s/reduce merge (clone x))))
                 
                  (w/outline :accumulator [:accumulator :socket]                                 
                                  (fn 
@@ -166,6 +166,7 @@
         (reset! server-sys @(d/chain (apply d/zip (map s/take! ss)) 
                  
                                    (fn [responses] 
+                                     
                                      (let [connections (doall (map (fn [r] (apply hash-map (doall (interleave [:requires :provides :ip] 
                                                                                                               (read-string (b/convert r String))))))                                                                
                                                                      responses))
@@ -247,19 +248,31 @@
         
         (assoc :system 
                
-               (let [id (last (clojure.string/split ip #"\."))
+               (let [decoded-client (->> 
+                                                                                                                                                 
+                                      (decode-stream client frame)
+                                                                    
+                                      (s/filter not-empty)
+                                                                  
+                                      (s/map (fn [x] (read-string x))))
+                     
+                     id (last (clojure.string/split ip #"\."))
                      
                      hb-vector [:heartbeat id]
                      
                      rec-id (keyword (str "heartbeat-received-" id))
                      
-                     status-map {:connection-status ::connected}             
+                     status-map {:connection-status ::connected}         
                      
-                     rs (mapv (fn [r] (w/outline r [:client] (fn [stream] 
-                                                               (selector (fn [packet]                                                                                              
-                                                                           (let [[sndr val] packet]
-                                                                             (if (= sndr r) val))) stream)))) 
-                             requires)
+                     rs (let [required-streams (repeatedly (count requires) s/stream)]
+                          (if (empty? required-streams)
+                            []
+                            (mapv (fn [x y] (w/outline x [] (fn [] y))) 
+                                  requires 
+                                  (apply multiplex (clone decoded-client) (map (fn [x] (fn [[sndr val]] 
+                                                                                         (when (= sndr x)
+                                                                                           val))) 
+                                                                               requires)))))
                      
                      ps (mapv (fn [p] (w/outline (make-key "providing-" p) [p]                                       
                                                  (fn [stream] (s/map (fn [x] [p x]) stream))                                     
@@ -292,7 +305,8 @@
                                                          (if (= sndr rec-id)                                                                   
                                                            (do
                                                              (println "Got heartbeat on client!")
-                                                             status-map)))) stream)))
+                                                             status-map)))) 
+                                                     stream)))
                               
                               (w/outline 
                                 :heartbeat-status 
@@ -304,27 +318,19 @@
                                            (s/consume (fn [x] 
                                                         (if (= (:connection-status x) ::disconnected)
                                                           (doall (map #(if (s/stream? %) (s/close! %)) streams)))) 
-                                                      (s/map identity stream))))
+                                                      (clone stream))))
                               
                               (w/outline
                                  :system-status
                                  ;Change this to get a bunch of data...
                                  [:heartbeat-status]
-                                 (fn [stream] (s/reduce merge (s/map identity stream))))])]               
+                                 (fn [stream] (s/reduce merge (clone stream))))])]               
                  
                  (->>
                    
                    (concat rs ps hb-resp hb-cl)
                    
-                   (cons (w/outline :client [] (fn [] 
-                                                                  
-                                                 (->> 
-                                                                                                                                                 
-                                                   (decode-stream client frame)
-                                                                    
-                                                   (s/filter not-empty)
-                                                                  
-                                                   (s/map (fn [x] (read-string x)))))))    
+                   (cons (w/outline :client [] (fn [] decoded-client)))    
                    
                    (cons (w/outline :out 
                                      [[:data-out]] 

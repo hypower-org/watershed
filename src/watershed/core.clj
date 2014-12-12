@@ -2,7 +2,8 @@
   (:require [manifold.deferred :as d]
             [watershed.graph :as g]
             [clojure.set :as st]
-            [manifold.stream :as s]))
+            [manifold.stream :as s])
+  (:use [watershed.utils]))
 
 (set! *warn-on-reflection* true)
 
@@ -104,7 +105,7 @@
                                             (let [val (vals 0)]
                                             (not (val (:edges (val graph))))))))
                                       
-                                      (remove empty?))
+                                      (remove empty?))                                                           
                         
                                pred (apply (comp set concat) sccs)]   
                     
@@ -169,9 +170,13 @@
        
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
     
-    (doseq [o (filter (comp (set (mapcat (fn [group] (g/fvs (make-graph (filter (comp (set group) :title) cycles)))) sccs)) :title) cycles)]  
-      
-      (println o)
+    (doseq [o (| (mapcat (fn [group] (g/fvs (make-graph (filter (comp (set group) :title) cycles)))) sccs)
+              
+                 #(filter (comp (set %) :title) cycles) 
+              
+                 #(mapcat :tributaries %)
+              
+                 #(filter (comp (set %) :title) cycles))]                     
       
       (step ((:title o) env) ((:sieve o))))
     

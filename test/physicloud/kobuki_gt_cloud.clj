@@ -3,7 +3,8 @@
             [manifold.stream :as s]
             [manifold.deferred :as d]
             [physicloud.physi-server :as phy]
-            [physicloud.gt-math :as math]))
+            [physicloud.gt-math :as math])
+  (:use [physicloud.utils]))
 
 (defn -main 
   [ip neighbors] 
@@ -21,6 +22,8 @@
                 (fn 
                   ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 1])
                   ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
+    
+    (w/outline :data-printer [:client] (fn [stream] (s/consume println (clone stream))))
    
     (w/outline :two [:two :cloud] 
                   (fn 

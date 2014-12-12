@@ -12,6 +12,12 @@
   [in out] 
   (s/connect in out {:upstream? true}))
 
+(defn clone 
+  [stream] 
+  (let [s (s/stream)]
+    (s/connect stream s)
+    s))
+
 (defn selector  
   [pred stream]   
   (let [s (s/map identity stream)           
@@ -62,9 +68,10 @@
         switch (fn [x]                   
                  (reduce-kv 
                    (fn [stored car v] 
-                     (if (v x)
-                       (reduced car)
-                       stored))
+                     (let [result (v x)]
+                       (if result
+                         (reduced [car result])
+                         stored)))
                    nil 
                    preds))]
     
@@ -74,9 +81,9 @@
         v 
         (fn [x] 
           (if x
-            (let [result (switch x)]
+            (let [[id result] (switch x)]
                   (when result 
-                    (s/put! (get multiplexer result) x))
+                    (s/put! (get multiplexer id) result))
                   (d/recur (s/take! stream)))
             (do
               (doseq [s streams]
