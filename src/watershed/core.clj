@@ -169,9 +169,11 @@
        
     ;#### Next, I need to start all of the cycles.  Ooo, side effects! ####
     
-    (doseq [o (filter (comp (set (mapcat (fn [group] (g/fvs (make-graph (filter (comp (set group) :title) cycles)))) sccs)) :title) cycles)]    
+    (doseq [o (filter (comp (set (mapcat (fn [group] (g/fvs (make-graph (filter (comp (set group) :title) cycles)))) sccs)) :title) cycles)]  
       
-       (step ((:title o) env) ((:sieve o))))
+      (println o)
+      
+      (step ((:title o) env) ((:sieve o))))
     
     ;#### Associate streams back into the outlines! ####
 
