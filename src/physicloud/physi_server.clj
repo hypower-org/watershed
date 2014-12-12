@@ -7,21 +7,13 @@
             [taoensso.nippy :as nippy]
             [aleph.udp :as udp]
             [watershed.utils :as u])
-  (:use [gloss.core]
+  (:use [physicloud.utils]
+        [gloss.core]
         [gloss.io]))
 
 (def ^:private B-ary (Class/forName "[B"))
 (def ^:private delimiter "|!|")
 (def ^:private frame (string :utf-8 :delimiters [delimiter]))
-
-(defn manifold-step 
-  ([] (s/stream))
-  ([s] (s/close! s))
-  ([s input] (s/put! s input)))
-
-(defn manifold-connect 
-  [in out] 
-  (s/connect in out {:upstream? true}))
 
 (defn assemble-phy 
   [& outlines] 
@@ -82,46 +74,6 @@
 (defn make-key   
   [append k]   
   (keyword (str append (name k))))
-
-(defn selector  
-  [pred stream]   
-  (let [s (s/map identity stream)           
-        output (s/stream)]         
-         (d/loop           
-           [v (s/take! s)]          
-           (d/chain v (fn [x]                 
-                        (if (s/closed? output)                                
-                          (s/close! s)                                                              
-                          (if (nil? x)
-                            (s/close! output)
-                            (do
-                              (let [result (pred x)]                                  
-                                (if result (s/put! output result))) 
-                              (d/recur (s/take! s))))))))        
-         output))
-      
-(defn take-within 
-  [fn' stream timeout default] 
-  (let [s (s/map identity stream)
-        output (s/stream)]    
-    (d/loop
-      [v (d/timeout! (s/take! s) timeout default)]
-      (d/chain v (fn [x] 
-                   (if (s/closed? output)
-                     (s/close! s)
-                     (if (nil? x)
-                       (do
-                         (s/put! output default)
-                         (s/close! output))
-                       (if (= x default)
-                         (do                        
-                           (s/put! output default)
-                           (s/close! s)
-                           (s/close! output))                        
-                         (do
-                           (s/put! output (fn' x)) 
-                           (d/recur (d/timeout! (s/take! s) timeout default)))))))))
-    output))
 
 (defn- acc-fn  
   [[accumulation new]] 

@@ -119,8 +119,6 @@
          
            (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
            
-           #_(w/outline :data-printer [:client] (fn [stream] (s/consume println (s/map identity stream))))
-           
            (emit-agent-outline id)
          
            (w/outline :encoders [] (fn [] (s/periodically 50 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))

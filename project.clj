@@ -12,6 +12,7 @@
                  [criterium "0.4.3"]
                  [seesaw "1.4.4"]
                  [jkobuki "1.1.0"]
+                 [org.clojure/data.int-map "0.1.0"]
                  [org.scream3r/jssc "2.8.0"]
                  [com.taoensso/nippy "2.7.0"]
                  [org.clojure/core.match "0.2.1"]
