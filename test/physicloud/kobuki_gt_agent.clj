@@ -122,7 +122,7 @@
            
            (emit-agent-outline id)
            
-           (w/outline (keyword (str "odom-" (name (emit-agent-id id)))) [:odom] (fn [stream] (s/map (fn [[x y _]] [x y]) stream)))
+           (w/outline (keyword (str "odom-" (name (emit-agent-id id)))) [:odom] (fn [stream] (s/map (fn [[_ _ x y _]] [x y]) stream)))
          
            (w/outline :encoders [] (fn [] (s/periodically 50 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
    

@@ -24,6 +24,7 @@
   (d/chain 
     (s/reduce conj [] stream)
     (fn [x] 
+      (println x)
       (let [xs (mapv first x)
             ys (mapv second x)]
         (spit (str "data-" id "-odom-x.edn") xs)
