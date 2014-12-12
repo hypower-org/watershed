@@ -4,6 +4,7 @@
             [manifold.deferred :as d]
             [physicloud.physi-server :as phy]
             [physicloud.gt-math :as math])
+  (:use [physicloud.utils])
   (:import [edu.ycp.robotics KobukiRobot])
   (:gen-class))
 
@@ -99,7 +100,7 @@
   [x-d x y-d y theta-d theta & {:keys [kw kv] :or {kw -0.4 kv -110}}]
   [(* kv (+ (* (- x x-d) (cos theta)) (* (- y y-d) (sin theta)))) (* kw (let [v (- theta theta-d)]
                                                                           (atan2 (sin v) (cos v))))])
-(defn pid-fn 
+(defn lyap-fn 
   [x-d x y-d y theta]  
   (lyap x-d x y-d y (atan2 (- y-d y) (- x-d x)) theta))
 
@@ -115,11 +116,13 @@
          
            {:ip ip
             :neighbors (read-string neighbors)
-            :requires [:cloud] :provides [(emit-agent-id id)]}
+            :requires [:cloud] :provides [(emit-agent-id id) (keyword (str "odom-" (name (emit-agent-id id))))]}
          
            (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
            
            (emit-agent-outline id)
+           
+           (w/outline (keyword (str "odom-" (name (emit-agent-id id)))) [:odom] (fn [stream] (s/map (fn [[x y _]] [x y]) stream)))
          
            (w/outline :encoders [] (fn [] (s/periodically 50 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
    
@@ -128,13 +131,13 @@
                                                 ([& streams] (s/map (fn [[[prev-l prev-r x y theta] [l r]]] (odom l prev-l r prev-r x y theta))
                                                                     (apply s/zip streams)))))
    
-           (w/outline :pid [:odom :sampled-position] (fn [& streams] (s/map (fn [[[_ _ x y theta] [x-d y-d]]]  
-                                                                              (println "DESIRED POS: " x-d y-d)
-                                                                              (println "POS: " x y) 
-                                                                              (pid-fn x-d x y-d y theta)) 
-                                                                            (apply s/zip streams))))
+           (w/outline :lyap [:odom :sampled-position] (fn [& streams] (s/map (fn [[[_ _ x y theta] [x-d y-d]]]  
+                                                                               (println "DESIRED POS: " x-d y-d)
+                                                                               (println "POS: " x y) 
+                                                                               (lyap-fn x-d x y-d y theta)) 
+                                                                             (apply s/zip streams))))
    
-           (w/outline :motor-controller [:pid] (fn thisfn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream))))))
+           (w/outline :motor-controller [:lyap] (fn thisfn [stream] (s/consume (fn [[v w]] (.control robot v w)) stream))))))
 
 
 

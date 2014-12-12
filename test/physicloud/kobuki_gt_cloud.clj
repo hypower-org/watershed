@@ -6,6 +6,29 @@
             [physicloud.gt-math :as math])
   (:use [physicloud.utils]))
 
+(def kill (atom false))
+
+(defn plot-data-fn 
+  [stream] 
+  (d/chain 
+    (s/reduce conj [] stream)
+    (fn [x] 
+      (let [xs (mapv first x)
+            ys (mapv second x)]
+        (doseq [i (range 6)]
+          (spit (str "data-" i "-alg-x.edn") (mapv #(nth % i) xs))
+          (spit (str "data-" i "-alg-y.edn") (mapv #(nth % i) ys)))))))
+
+(defn plot-data-odom 
+  [id stream] 
+  (d/chain 
+    (s/reduce conj [] stream)
+    (fn [x] 
+      (let [xs (mapv first x)
+            ys (mapv second x)]
+        (spit (str "data-" id "-odom-x.edn") xs)
+        (spit (str "data-" id "-odom-y.edn") ys)))))
+
 (defn -main 
   [ip neighbors] 
   
@@ -14,16 +37,31 @@
     {:ip ip
      :neighbors neighbors
      :provides [:cloud] 
-     :requires [:one]}
+     :requires [:one :odom-one]}
     
     (w/outline :cloud [:one :two :three :four :five :six] (fn [& streams] (s/map math/cloud-fn (apply s/zip streams))))
+       
+    (w/outline :data-printer [:client] (fn [stream] (s/consume println (clone stream))))   
+    
+    (w/outline :kill [:cloud :odom-one [:all :without [:kill]]] (fn [stream stream' & streams] 
+                                                        
+                                                                 (plot-data-fn (clone stream))
+                                                        
+                                                                 (plot-data-odom stream' 0)
+                                                 
+                                                                 (future 
+                                                                   (loop [] 
+                                                                     (if @kill                                                                      
+                                                                       (doseq [s streams]
+                                                                         (if (s/stream? s)
+                                                                           (s/close! s))))
+                                                                     (Thread/sleep 100)
+                                                                     (recur)))))
 
     #_(w/outline :one [:one :cloud] 
                 (fn 
                   ([] [[0.0 0.5 0.5 0.0 -0.5 -0.5] [0.5 0.5 -0.5 -0.5 -0.5 0.5] [-1 -1 -1 -1] 1])
                   ([& streams] (s/map #(apply math/agent-fn %) (apply s/zip streams)))))
-    
-    (w/outline :data-printer [:client] (fn [stream] (s/consume println (clone stream))))
    
     (w/outline :two [:two :cloud] 
                   (fn 
