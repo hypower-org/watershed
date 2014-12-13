@@ -20,6 +20,6 @@
                  [org.clojure/math.numeric-tower "0.0.4"]
                  [gloss "0.2.4-SNAPSHOT"]
                  [aleph "0.4.0-alpha9"]]
-  :plugins [[lein-nodisassemble "0.1.3"] [jonase/eastwood "0.2.0"]]
+  :plugins [[lein-nodisassemble "0.1.3"]]
   :main physicloud.kobuki-gt-agent
   :aot [physicloud.kobuki-gt-agent])

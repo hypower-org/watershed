@@ -1,10 +1,22 @@
 (ns watershed.simple-test
   (:require [watershed.core :as w]
             [manifold.stream :as s]
-            [manifold.deferred :as d]
-            [physicloud.physi-server :as phy]))
+            [manifold.deferred :as d]))
 
-(phy/assemble-phy 
+(defn manifold-step 
+  ([] (s/stream))
+  ([s] (s/close! s))
+  ([s input] (s/put! s input)))
+
+(defn manifold-connect 
+  [in out] 
+  (s/connect in out {:upstream? true}))
+
+(w/assemble
+  
+  manifold-step 
+  
+  manifold-connect
   
   (w/outline :a [:c] 
              

@@ -1,4 +1,4 @@
-(ns physicloud.kobuki-gt-agent
+(ns physicloud.kobuki-gt-agent-plotting
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
@@ -116,11 +116,13 @@
          
            {:ip ip
             :neighbors (read-string neighbors)
-            :requires [:cloud] :provides [(emit-agent-id id)]}
+            :requires [:cloud] :provides [(emit-agent-id id) (keyword (str "odom-" (name (emit-agent-id id))))]}
          
            (w/outline :sampled-position [:cloud] (fn [stream] (s/map (fn [[[x y]]] [(x a-id) (y a-id)]) (sample 50 stream))))
            
            (emit-agent-outline id)
+           
+           (w/outline (keyword (str "odom-" (name (emit-agent-id id)))) [:odom] (fn [stream] (s/map (fn [[_ _ x y _]] [x y]) stream)))
          
            (w/outline :encoders [] (fn [] (s/periodically 50 (fn [] [(.getLeftEncoder robot) (.getRightEncoder robot)]))))
    

@@ -2,7 +2,7 @@
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [physicloud.physi-server :as phy]
+            [physicloud.core :as phy]
             [physicloud.gt-math :as math]))
 
 (defn emit-agent-outline

@@ -1,10 +1,33 @@
-(ns physicloud.kobuki-gt-cloud
+(ns physicloud.kobuki-gt-cloud-plotting
   (:require [watershed.core :as w]
             [manifold.stream :as s]
             [manifold.deferred :as d]
             [physicloud.core :as phy]
             [physicloud.gt-math :as math])
   (:use [physicloud.utils]))
+
+(def kill (atom false))
+
+(defn plot-data-fn 
+  [stream] 
+  (d/chain 
+    (s/reduce conj [] stream)
+    (fn [x] 
+      (let [xs (mapv first x)
+            ys (mapv second x)]
+        (doseq [i (range 6)]
+          (spit (str "data-" i "-alg-x.edn") (mapv #(nth % i) xs))
+          (spit (str "data-" i "-alg-y.edn") (mapv #(nth % i) ys)))))))
+
+(defn plot-data-odom 
+  [id stream] 
+  (d/chain 
+    (s/reduce conj [] stream)
+    (fn [x] 
+      (let [xs (mapv first x)
+            ys (mapv second x)]
+        (spit (str "data-" id "-odom-x.edn") xs)
+        (spit (str "data-" id "-odom-y.edn") ys)))))
 
 (defn -main 
   [ip neighbors] 
@@ -18,7 +41,26 @@
     
     (w/outline :cloud [:one :two :three :four :five :six] (fn [& streams] (s/map math/cloud-fn (apply s/zip streams))))
        
-    #_(w/outline :data-printer [:client] (fn [stream] (s/consume println (clone stream))))      
+    #_(w/outline :data-printer [:client] (fn [stream] (s/consume println (clone stream))))   
+    
+    (w/outline :kill [:cloud :odom-one :odom-two 
+                      
+                      [:all :without [:kill]]] (fn [stream odom-one odom-two & streams] 
+                                                        
+                                                (plot-data-fn (clone stream))
+                                                        
+                                                (plot-data-odom 0 (clone odom-one))
+                                                
+                                                (plot-data-odom 1 (clone odom-two))
+                                                 
+                                                (future 
+                                                  (loop [] 
+                                                    (if @kill                                                                      
+                                                      (doseq [s streams]
+                                                        (if (s/stream? s)
+                                                          (s/close! s))))
+                                                    (Thread/sleep 100)
+                                                    (recur)))))
 
     #_(w/outline :one [:one :cloud] 
                 (fn 

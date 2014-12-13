@@ -1,6 +1,6 @@
 (ns physicloud.overload-client
   (:require [watershed.core :as w]
-            [physicloud.physi-server :as n]
+            [physicloud.core :as n]
             [manifold.stream :as s]
             [aleph.udp :as udp]
             [manifold.deferred :as d])
