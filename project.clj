@@ -7,7 +7,7 @@
                  [incanter "1.5.5"]
                  [net.mikera/core.matrix "0.29.1"]
                  [manifold "0.1.0-beta5"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 ;[org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [criterium "0.4.3"]
                  [seesaw "1.4.4"]
                  [org.clojure/data.int-map "0.1.0"]

@@ -1,6 +1,5 @@
-(ns watershed.utils
-  (:use [clojure.java.shell :only [sh]])
-  #_(:require [no.disassemble :as d]))
+(ns watershed.utils)
+  #_(:require [no.disassemble :as d])
 
 (defn | 
   [init & fns] 
