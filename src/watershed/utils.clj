@@ -1,5 +1,4 @@
 (ns watershed.utils)
-  #_(:require [no.disassemble :as d])
 
 (defn | 
   [init & fns] 
