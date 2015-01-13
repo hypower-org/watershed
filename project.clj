@@ -1,4 +1,4 @@
-(defproject watershed "0.1.0"
+(defproject watershed "0.1.1"
   :description "A library for compiling graphs!"
   :url "http://github.com/pglotfel/watershed"
   :license {:name "Eclipse Public License"
