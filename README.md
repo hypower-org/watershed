@@ -9,6 +9,10 @@ The purpose of this library is to allow the definition and connection of streams
 
 A waterway is defined by a name, its tributaries, and a sieve.  The name is the waterway's identifier; tributaries are the source waterways that feed into the sink waterway; and the sieve defines how the information "flows" from the tributaries to the output.
 
+To use this library, include the following in your project file:
+
+    [hypower-org/watershed "0.1.3"]
+
 This work was funded by the National Science Foundation through grant CNS-1239221.
 
 
