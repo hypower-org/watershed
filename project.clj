@@ -1,4 +1,4 @@
-(defproject hypower-org/watershed "0.1.3"
+(defproject hypower-org/watershed "0.1.4"
   :description "A library for compiling graphs!"
   :url "http://github.com/hypower-org/watershed"
   :license {:name "Eclipse Public License"
