@@ -11,7 +11,7 @@ A waterway is defined by a name, its tributaries, and a sieve.  The name is the 
 
 To use this library, include the following in your project file:
 
-    [hypower-org/watershed "0.1.3"]
+    [hypower-org/watershed "0.1.4"]
 
 This work was funded by the National Science Foundation through grant CNS-1239221.
 
