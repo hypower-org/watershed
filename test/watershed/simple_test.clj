@@ -18,19 +18,19 @@
   
   manifold-connect
   
-  (w/outline :a [:c] 
+  (w/vertex :a [:c] 
              
              (fn 
                ([] [1])
                ([stream] (s/map #(do (println %) (identity %)) stream))))
   
-    (w/outline :b [:a] 
+    (w/vertex :b [:a] 
              
              (fn 
                ([] [1])
                ([stream] (s/map identity stream))))
     
-    (w/outline :c [:b] 
+    (w/vertex :c [:b] 
              
              (fn 
                ([] [1])

@@ -7,32 +7,32 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti parse-outline 
-  (fn [env outline step con]
-    (:type outline)))
+(defmulti parse-vertex 
+  (fn [env vertex step con]
+    (:type vertex)))
 
-(defmethod parse-outline :cyclic
+(defmethod parse-vertex :cyclic
   [env {:keys [title sieve]} step _]
   (assoc env title (step)))
 
-(defmethod parse-outline :source
+(defmethod parse-vertex :source
   [env {:keys [title sieve]} step _]
   (assoc env title (step)))
 
-(defmethod parse-outline :estuary
+(defmethod parse-vertex :estuary
   [env {:keys [title sieve tributaries]} _ _] 
   (assoc env title (apply sieve (map env tributaries))))
 
-(defmethod parse-outline :river
+(defmethod parse-vertex :river
   [env {:keys [title sieve tributaries]} _ _]  
   (assoc env title (apply sieve (map env tributaries))))
 
-(defmethod parse-outline :aliased 
+(defmethod parse-vertex :aliased 
   [env {:keys [title sieve tributaries]} _ con] 
   (con (apply sieve (map env tributaries)) (title env))
   env)
 
-(defmethod parse-outline nil 
+(defmethod parse-vertex nil 
   [env _ _ _ ]
   env)
 
@@ -62,8 +62,8 @@
 
 (def ^{:private true} o {:title nil :tributaries nil :sieve nil :group nil})
 
-(defn outline
-  ([title tributaries sieve] (outline title tributaries sieve nil))
+(defn vertex
+  ([title tributaries sieve] (vertex title tributaries sieve nil))
   ([title tributaries sieve group]
     (assoc o :title title :tributaries tributaries :sieve sieve :group group)))
     
@@ -73,9 +73,9 @@
   ;Implement some checks...
   
   (let [ts (map :title outlines)]
-    (assert (= (count ts) (count (distinct ts))) "Each outline must have a distinct name!"))
+    (assert (= (count ts) (count (distinct ts))) "Each vertex must have a distinct name!"))
   
-  (let [compiler (fn [env o] (parse-outline env o step con))   
+  (let [compiler (fn [env o] (parse-vertex env o step con))   
              
         ;#### Expand dependencies and infer types! ####
         
